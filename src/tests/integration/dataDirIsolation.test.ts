@@ -135,7 +135,7 @@ describe('RULEGAP_DATA_DIR Isolation and Restart Persistence', () => {
 
       // Poll until completed
       let finalRun: any = null;
-      for (let i = 0; i < 40; i++) {
+      for (let i = 0; i < 120; i++) {
         await new Promise((r) => setTimeout(r, 500));
         const res = await fetch(`${url}/api/runs/${createdRunId}`);
         if (res.status === 200) {

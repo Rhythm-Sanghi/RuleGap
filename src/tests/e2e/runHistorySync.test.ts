@@ -100,9 +100,14 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       await page.locator('button:has-text("Load Sample Policy")').click();
       await page.locator('button:has-text("Confirm Rule Contract & Derive Plan")').click();
       await page.waitForSelector('button:has-text("Approve Plan & Authorize Verification")');
-      await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
+      const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+      await approveBtn.scrollIntoViewIfNeeded();
+      await approveBtn.click();
+      await page.waitForSelector('.badge:has-text("Plan Approved")');
       await page.waitForSelector('button:has-text("Start Browser Verification Run")');
-      await page.locator('button:has-text("Start Browser Verification Run")').click();
+      const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
+      await startBtn.scrollIntoViewIfNeeded();
+      await startBtn.click();
 
       // Wait for Mode A completion
       await page.waitForSelector('.callout-danger', { timeout: 75000 });

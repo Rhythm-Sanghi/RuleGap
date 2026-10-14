@@ -106,6 +106,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
 
       // 3. Approve and start run
       await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
+      await page.waitForSelector('.badge:has-text("Plan Approved")');
       await page.locator('button:has-text("Start Browser Verification Run")').click();
       await page.waitForSelector('.callout-danger', { timeout: 75000 });
 
@@ -216,6 +217,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       const approveBtn2 = page.locator('button:has-text("Approve Plan & Authorize Verification")');
       await approveBtn2.scrollIntoViewIfNeeded();
       await approveBtn2.click();
+      await page.waitForSelector('.badge:has-text("Plan Approved")');
 
       const startBtn2 = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn2.scrollIntoViewIfNeeded();
@@ -276,6 +278,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
       await approveBtn.focus();
       await approveBtn.press('Enter');
+      await page.waitForSelector('.badge:has-text("Plan Approved")');
 
       // Start run via keyboard
       await page.waitForSelector('button:has-text("Start Browser Verification Run")');
