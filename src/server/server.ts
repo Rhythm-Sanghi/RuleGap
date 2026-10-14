@@ -18,6 +18,14 @@ export function createApp(): express.Application {
   // Host header validation
   app.use(hostHeaderValidation);
 
+  // Capture active server port for hermetic test execution
+  app.use((req, _res, next) => {
+    if (req.socket.localPort) {
+      req.app.set('serverPort', req.socket.localPort);
+    }
+    next();
+  });
+
   // Body parser
   app.use(express.json({ limit: '1mb' }));
 

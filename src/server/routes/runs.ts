@@ -82,7 +82,13 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
     }
 
     const runId = crypto.randomUUID();
-    const port = Number(req.socket.localPort) || SERVER_CONFIG.port;
+    const socketAddr = typeof req.socket.address === 'function' ? req.socket.address() : null;
+    const socketPort =
+      socketAddr && typeof socketAddr === 'object' && 'port' in socketAddr
+        ? (socketAddr as { port: number }).port
+        : req.socket.localPort;
+    const appPort = req.app.get('serverPort') || req.app.get('port');
+    const port = Number(socketPort || appPort) || SERVER_CONFIG.port;
 
     // Start asynchronous execution with the authoritative approved contract
     await executionRunner.startRun(runId, plan, executedContract, port);

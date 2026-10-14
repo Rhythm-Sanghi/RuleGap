@@ -18,6 +18,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
       const s = app.listen(0, '127.0.0.1', () => {
         const addr = s.address();
         serverPort = typeof addr === 'object' && addr ? addr.port : 3000;
+        app.set('serverPort', serverPort);
         resolve(s);
       });
     });

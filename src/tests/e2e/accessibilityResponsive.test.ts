@@ -4,6 +4,8 @@ import { chromium, Browser } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 import { createApp } from '../../server/server.js';
 import { browserPool } from '../../server/runner/browserPool.js';
+import { executionRunner } from '../../server/runner/executionRunner.js';
+import { cancellationManager } from '../../server/runner/cancellationManager.js';
 
 describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Breakpoints', () => {
   let server: http.Server;
@@ -16,11 +18,19 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       server = app.listen(0, '127.0.0.1', () => {
         const addr = server.address();
         serverPort = typeof addr === 'object' && addr ? addr.port : 3000;
+        app.set('serverPort', serverPort);
         resolve();
       });
     });
 
     browser = await chromium.launch({ headless: true });
+  });
+
+  afterEach(async () => {
+    const activeRunId = executionRunner.getActiveRunId();
+    if (activeRunId) {
+      cancellationManager.requestCancellation(activeRunId);
+    }
   });
 
   afterAll(async () => {
@@ -248,7 +258,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       // Tab into load sample policy button
       const loadBtn = page.locator('button:has-text("Load Sample Policy")');
       await loadBtn.focus();
-      await page.keyboard.press('Enter');
+      await loadBtn.press('Enter');
 
       // Check that field-name receives keyboard input
       const fieldInput = page.locator('#field-name');
@@ -259,19 +269,19 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       // Confirm contract via keyboard
       const confirmBtn = page.locator('button:has-text("Confirm Rule Contract & Derive Plan")');
       await confirmBtn.focus();
-      await page.keyboard.press('Enter');
+      await confirmBtn.press('Enter');
 
       // Approve plan via keyboard
       await page.waitForSelector('button:has-text("Approve Plan & Authorize Verification")');
       const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
       await approveBtn.focus();
-      await page.keyboard.press('Enter');
+      await approveBtn.press('Enter');
 
       // Start run via keyboard
       await page.waitForSelector('button:has-text("Start Browser Verification Run")');
       const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn.focus();
-      await page.keyboard.press('Enter');
+      await startBtn.press('Enter');
 
       // Wait for run completion
       await page.waitForSelector('.callout-danger', { timeout: 75000 });
