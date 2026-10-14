@@ -163,7 +163,7 @@ export const EvidenceMatrix: React.FC<EvidenceMatrixProps> = ({
                         className="btn btn-secondary btn-inspect"
                         style={{ minHeight: 30, padding: '2px 10px', fontSize: '0.78rem' }}
                         onClick={() => onSelectObservation(obs)}
-                        disabled={obs.lifecycleState === 'PENDING' || obs.lifecycleState === 'NOT_EXECUTED'}
+                        disabled={obs.lifecycleState === 'PENDING' || obs.lifecycleState === 'RUNNING' || obs.lifecycleState === 'NOT_EXECUTED'}
                         aria-label={`Inspect Case ${index + 1}: ₹${obs.value}`}
                       >
                         Inspect

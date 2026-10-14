@@ -39,9 +39,7 @@ jobs:
 
       - name: Dependency security audit
         run: |
-          echo "Running dependency security audit..."
-          npm audit --omit=dev || true
-          npm audit --audit-level=critical
+          npm audit --audit-level=high
 
       - name: Execute full test suite
         run: npm test

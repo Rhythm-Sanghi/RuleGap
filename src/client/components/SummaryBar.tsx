@@ -151,6 +151,24 @@ export const SummaryBar: React.FC<SummaryBarProps> = ({ snapshot, isRunning }) =
             {summaryCounts.executionError}
           </span>
         </div>
+
+        {!isRunning && summaryCounts.notExecuted > 0 && (
+          <div className="summary-card not-executed">
+            <span className="summary-label">Not Executed</span>
+            <span className="summary-value" style={{ color: 'var(--text-muted)' }}>
+              {summaryCounts.notExecuted}
+            </span>
+          </div>
+        )}
+
+        {!isRunning && summaryCounts.interrupted > 0 && (
+          <div className="summary-card interrupted">
+            <span className="summary-label">Interrupted</span>
+            <span className="summary-value" style={{ color: '#b45309' }}>
+              {summaryCounts.interrupted}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
