@@ -382,16 +382,22 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await page.goto(`http://127.0.0.1:${serverPort}`);
       await page.waitForSelector('.app-header');
 
-      // Load sample, confirm, approve and run Mode A
-      await page.locator('button:has-text("Load Sample Policy")').click();
-      await page.locator('button:has-text("Confirm Rule Contract & Derive Plan")').click();
-      await page.waitForSelector('button:has-text("Approve Plan & Authorize Verification")');
-      await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
-      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
-      await page.locator('button:has-text("Start Browser Verification Run")').click();
+      // Check if a completed mismatch run is already selected from prior test; if not, execute Mode A run
+      const hasMismatchVerdict = await page.locator('.callout-danger').isVisible().catch(() => false);
+      if (!hasMismatchVerdict) {
+        await page.locator('button:has-text("Load Sample Policy")').click();
+        await page.locator('button:has-text("Confirm Rule Contract & Derive Plan")').click();
+        await page.waitForSelector('button:has-text("Approve Plan & Authorize Verification")');
+        const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+        await approveBtn.scrollIntoViewIfNeeded();
+        await approveBtn.click();
+        await page.waitForSelector('.badge:has-text("Plan Approved")');
 
-      // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+        const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
+        await startBtn.scrollIntoViewIfNeeded();
+        await startBtn.click();
+        await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      }
 
       // Open drawer for Case 3 mismatch
       const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
