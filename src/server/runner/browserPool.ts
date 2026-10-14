@@ -97,12 +97,13 @@ export class BrowserPool {
 
   async close(): Promise<void> {
     if (this.browser) {
+      const b = this.browser;
+      this.browser = null;
       try {
-        await this.browser.close();
+        await b.close();
       } catch {
         // ignore
       }
-      this.browser = null;
     }
   }
 }

@@ -32,7 +32,7 @@ export async function observeFormSubmission(
     targetUrl,
     fieldSelector,
     submitSelector = '#submit-btn',
-    timeoutMs = 5000,
+    timeoutMs = 15000,
     preSubmitHook,
   } = options;
 

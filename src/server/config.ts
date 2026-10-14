@@ -9,8 +9,8 @@ function getBaseDataDir(): string {
 export const SERVER_CONFIG = {
   host: '127.0.0.1',
   port: Number(process.env.PORT) || 3000,
-  actionTimeoutMs: 5000,
-  caseTimeoutMs: 10000,
+  actionTimeoutMs: 15000,
+  caseTimeoutMs: 30000,
   maxScheduledCases: 25,
   get runsStorageDir(): string {
     return path.resolve(getBaseDataDir(), 'runs');

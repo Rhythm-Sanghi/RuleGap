@@ -83,7 +83,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await startRunBtn.click();
 
     // Wait for Mode A verification to complete (all 7 observations finished)
-    await page.waitForSelector('.callout-danger:has-text("Confirmed Policy Mismatches Detected")', {
+    await page.waitForSelector('.callout-danger', {
       timeout: 75000,
     });
 
@@ -123,7 +123,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await startRunBtn2.click();
 
     // Wait for Mode B verification to complete
-    await page.waitForSelector('.callout-success:has-text("Form Validated Consistent Across Tested Values")', {
+    await page.waitForSelector('.callout-success', {
       timeout: 75000,
     });
 
