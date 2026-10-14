@@ -25,7 +25,16 @@ export class CancellationManager {
     const handle = this.activeRuns.get(runId);
     if (handle) {
       handle.activeContext = context;
+      if (context && handle.isCancellationRequested) {
+        context.close().catch(() => {});
+        handle.activeContext = null;
+      }
     }
+  }
+
+  getAbortSignal(runId: string): AbortSignal | null {
+    const handle = this.activeRuns.get(runId);
+    return handle ? handle.abortController.signal : null;
   }
 
   requestCancellation(runId: string): boolean {

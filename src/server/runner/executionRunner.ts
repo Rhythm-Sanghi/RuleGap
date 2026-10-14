@@ -1,3 +1,4 @@
+import type { Page } from 'playwright';
 import { Response } from 'express';
 import {
   TestPlanRecord,
@@ -171,8 +172,47 @@ export class ExecutionRunner {
         });
 
         const context = await browserPool.createHermeticContext(browser, port);
+        if (cancellationManager.isCancelled(runId)) {
+          await context.close().catch(() => {});
+          await this.handleCancellationFinalization(snapshot, i);
+          return;
+        }
+
+        // Safely create new page, aborting immediately if cancellation arrives during newPage()
+        let page: Page;
+        const abortSignal = cancellationManager.getAbortSignal(runId);
+        try {
+          page = await new Promise<Page>((resolve, reject) => {
+            if (abortSignal?.aborted) {
+              return reject(new Error('Execution cancelled before page creation'));
+            }
+            const onAbort = () => reject(new Error('Execution cancelled during page creation'));
+            abortSignal?.addEventListener('abort', onAbort, { once: true });
+
+            context.newPage().then(
+              (p) => {
+                abortSignal?.removeEventListener('abort', onAbort);
+                resolve(p);
+              },
+              (err) => {
+                abortSignal?.removeEventListener('abort', onAbort);
+                reject(err);
+              }
+            );
+          });
+        } catch (pageErr: unknown) {
+          await context.close().catch(() => {});
+          if (cancellationManager.isCancelled(runId)) {
+            snapshot.observations[i].lifecycleState = 'INTERRUPTED';
+            snapshot.observations[i].diagnosticDetails = 'Execution interrupted by user cancellation';
+            await this.handleCancellationFinalization(snapshot, i + 1);
+            return;
+          }
+          throw pageErr;
+        }
+
+        // Register active context so requestCancellation can close it if cancelled during observation
         cancellationManager.setActiveContext(runId, context);
-        const page = await context.newPage();
 
         let observation: TestObservation;
         try {
@@ -213,9 +253,10 @@ export class ExecutionRunner {
           await context.close().catch(() => {});
         }
 
-        // Check again if cancelled during page cleanup
+        // Check again if cancelled during observation or page cleanup
         if (cancellationManager.isCancelled(runId)) {
-          snapshot.observations[i] = observation;
+          snapshot.observations[i].lifecycleState = 'INTERRUPTED';
+          snapshot.observations[i].diagnosticDetails = 'Execution interrupted by user cancellation';
           await this.handleCancellationFinalization(snapshot, i + 1);
           return;
         }
