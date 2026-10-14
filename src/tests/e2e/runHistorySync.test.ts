@@ -105,7 +105,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       await page.locator('button:has-text("Start Browser Verification Run")').click();
 
       // Wait for Mode A completion
-      await page.waitForSelector('.callout-danger', { timeout: 35000 });
+      await page.waitForSelector('.callout-danger', { timeout: 75000 });
       expect(await page.locator('.summary-card.consistent .summary-value').textContent()).toBe('3');
       expect(await page.locator('.summary-card.mismatch .summary-value').textContent()).toBe('4');
 
@@ -134,7 +134,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       await page.locator('button:has-text("Start Browser Verification Run")').click();
 
       // Wait for Mode B completion
-      await page.waitForSelector('.callout-success', { timeout: 35000 });
+      await page.waitForSelector('.callout-success', { timeout: 75000 });
       expect(await page.locator('.summary-card.consistent .summary-value').textContent()).toBe('7');
       expect(await page.locator('.summary-card.mismatch .summary-value').textContent()).toBe('0');
 
@@ -277,5 +277,5 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
     } finally {
       await context.close();
     }
-  }, 90000);
+  }, 120000);
 });

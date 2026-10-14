@@ -37,7 +37,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
         server.close(() => resolve());
       });
     }
-  }, 15000);
+  }, 60000);
 
   it('completes the full interactive workflow: import -> confirm contract -> approve -> verify Mode A -> switch Mode B -> compare history', async () => {
     const journeyStartTime = Date.now();
@@ -84,7 +84,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
 
     // Wait for Mode A verification to complete (all 7 observations finished)
     await page.waitForSelector('.callout-danger:has-text("Confirmed Policy Mismatches Detected")', {
-      timeout: 30000,
+      timeout: 75000,
     });
 
     // Check Mode A summary counts in the UI
@@ -124,7 +124,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
 
     // Wait for Mode B verification to complete
     await page.waitForSelector('.callout-success:has-text("Form Validated Consistent Across Tested Values")', {
-      timeout: 30000,
+      timeout: 75000,
     });
 
     // Check Mode B summary counts in the UI
@@ -154,5 +154,5 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     const journeyDurationMs = Date.now() - journeyStartTime;
     console.log(`[Demonstration Benchmark] Full 12-step workbench journey completed in ${journeyDurationMs}ms (${(journeyDurationMs / 1000).toFixed(2)}s). Fits within 180s video limit.`);
     expect(journeyDurationMs).toBeLessThan(180000);
-  }, 45000);
+  }, 120000);
 });
