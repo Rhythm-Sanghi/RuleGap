@@ -2,6 +2,7 @@ import express from 'express';
 import http from 'http';
 import path from 'path';
 import fs from 'fs';
+import { execSync } from 'child_process';
 import { SERVER_CONFIG } from './config.js';
 import { hostHeaderValidation, csrfProtection } from './middleware/security.js';
 import { fixturesRouter } from './routes/fixtures.js';
@@ -30,6 +31,14 @@ export function createApp(): express.Application {
 
   // Serve client assets if built
   const clientDist = path.resolve(process.cwd(), 'dist/client');
+  if (!fs.existsSync(clientDist) && process.env.NODE_ENV !== 'production' && !process.env.VITEST) {
+    try {
+      execSync('npm run build:client', { stdio: 'inherit' });
+    } catch {
+      // Ignore if build cannot be run synchronously
+    }
+  }
+
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist));
     app.get('*', (req, res, next) => {

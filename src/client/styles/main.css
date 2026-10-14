@@ -396,6 +396,8 @@ code, pre, .mono {
 .summary-card.mismatch { border-left: 4px solid var(--status-mismatch); }
 .summary-card.inconclusive { border-left: 4px solid var(--status-inconclusive); }
 .summary-card.error { border-left: 4px solid var(--status-error); }
+.summary-card.not-executed { border-left: 4px solid var(--text-muted); }
+.summary-card.interrupted { border-left: 4px solid #b45309; }
 
 .summary-label {
   font-size: 0.75rem;

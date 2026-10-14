@@ -6,7 +6,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/server/server.ts",
+    "dev": "npm run build:client && tsx src/server/server.ts",
     "build:client": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "build": "npm run build:client && npm run build:server",

@@ -138,7 +138,7 @@ export const SourceIngestion: React.FC<SourceIngestionProps> = ({
         )}
 
         {/* Document Metadata Strip */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+        <div className="document-meta-strip" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span>Source:</span>
             <strong className="mono" style={{ color: 'var(--text-primary)' }}>{sourceDocumentName}</strong>

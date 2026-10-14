@@ -83,3 +83,4 @@ Activity mode: Focused alternative / architectural takeaway.
 ## Revisions
 
 - Synchronized run history selector synchronously upon run completion (`sse.addEventListener('run_completed')`) and mount (`fetchRunHistory(true)`), resolving display desynchronization between dropdown and matrix. Added run ID prefix labels and explicit live-run indicator. Verified via dedicated E2E test `runHistorySync.test.ts`.
+- Clarified verification provenance: 200% zoom equivalence, offline HTML report rendering, and 4-state classification accounting are mechanically verified via automated Playwright/Vitest suites (`accessibilityResponsive.test.ts`, `offlineReportFile.test.ts`). Manual native zoom and offline checks remain documented as operational checklists without claiming unconfirmed learner-performed completion. Synthetic fixture and finite-sampling disclaimers remain strictly preserved.

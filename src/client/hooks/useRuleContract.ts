@@ -36,10 +36,23 @@ export function useRuleContract() {
     setConfirmedContract(null);
   };
 
+  const extractExcerptFromText = (text: string): string => {
+    const lines = text
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0);
+    // Find line mentioning threshold or income
+    const matchingLine = lines.find((l) =>
+      /(income|threshold|grant|scholarship|limit|eligible|300,?000|250,?000)/i.test(l)
+    );
+    return matchingLine || lines[0] || '';
+  };
+
   const loadPastedFallback = (fileName: string, text: string) => {
     setSourceText(text);
     setSourceDocumentName(fileName);
     setSourceType('manual_fallback_pdf');
+    setSourceExcerpt(extractExcerptFromText(text));
     setIsConfirmed(false);
     setConfirmedContract(null);
   };
@@ -48,18 +61,24 @@ export function useRuleContract() {
     setSourceText(text);
     setSourceDocumentName(fileName);
     setSourceType('extracted_pdf');
+    setSourceExcerpt(extractExcerptFromText(text));
     setIsConfirmed(false);
     setConfirmedContract(null);
   };
 
   const confirmContract = (): RuleContract => {
+    const cleanExcerpt = sourceExcerpt.trim() || extractExcerptFromText(sourceText);
+    if (!cleanExcerpt) {
+      throw new Error('A genuine source policy excerpt is required to confirm the rule contract');
+    }
+
     const contract: RuleContract = {
       id: crypto.randomUUID(),
       fieldName: fieldName.trim() || 'Annual Family Income',
       operator,
       threshold: Number(threshold) || 0,
       unit: unit.trim() || 'INR',
-      sourceExcerpt: sourceExcerpt.trim() || sourceText.slice(0, 500) || 'Policy rule definition',
+      sourceExcerpt: cleanExcerpt,
       sourceDocumentName,
       sourceType,
       confirmedAt: new Date().toISOString(),

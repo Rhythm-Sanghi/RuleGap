@@ -42,6 +42,12 @@ export async function generateHtmlEvidenceReport(snapshot: VerificationRunSnapsh
     if (lifecycle === 'INTERRUPTED') {
       return '<span class="badge badge-error">INTERRUPTED</span>';
     }
+    if (lifecycle === 'RUNNING') {
+      return '<span class="badge badge-inconclusive">RUNNING</span>';
+    }
+    if (lifecycle === 'PENDING') {
+      return '<span class="badge badge-neutral">PENDING</span>';
+    }
     switch (classification) {
       case 'CONSISTENT':
         return '<span class="badge badge-consistent">CONSISTENT</span>';

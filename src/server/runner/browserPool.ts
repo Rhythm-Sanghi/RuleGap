@@ -1,4 +1,4 @@
-import { chromium, Browser, BrowserContext } from 'playwright';
+import { chromium, type Browser, type BrowserContext } from 'playwright';
 
 export class BrowserPool {
   private browser: Browser | null = null;
@@ -21,9 +21,30 @@ export class BrowserPool {
 
     this.isLaunching = true;
     try {
+      const launchArgs: string[] = ['--disable-dev-shm-usage'];
+
+      // Documented Sandbox Exception:
+      // Linux CI container runners (e.g. GitHub Actions ubuntu-latest / Docker) lack
+      // SUID sandbox helper binaries and unprivileged kernel user namespaces by default.
+      // Therefore, in Linux CI or when explicitly requested, sandbox flags must be adjusted.
+      const isLinuxCI =
+        process.platform === 'linux' &&
+        (Boolean(process.env.CI) || (typeof process.getuid === 'function' && process.getuid() === 0));
+      const disableSandbox = isLinuxCI || process.env.RULEGAP_CHROMIUM_NO_SANDBOX === 'true';
+
+      if (disableSandbox) {
+        launchArgs.push('--no-sandbox', '--disable-setuid-sandbox');
+      }
+
+      // On supported platforms (Windows, macOS, and configured desktop Linux),
+      // explicitly enable Chromium OS sandboxing. Note: Playwright defaults chromiumSandbox
+      // to false, so setting it explicitly to true is required to engage the OS process sandbox.
+      const enableSandbox = !disableSandbox;
+
       this.browser = await chromium.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        chromiumSandbox: enableSandbox,
+        args: launchArgs,
       });
       return this.browser;
     } finally {

@@ -13,7 +13,7 @@ export const runsRouter = Router();
 
 const StartRunBodySchema = z.object({
   planId: z.string().uuid(),
-  contract: RuleContractSchema,
+  contract: RuleContractSchema.optional(),
 });
 
 // Start verification run
@@ -29,9 +29,50 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
     if (!plan.isApproved) {
       return res.status(400).json({ error: 'Cannot execute unapproved test plan' });
     }
-    if (plan.contractId !== contract.id) {
-      return res.status(400).json({ error: 'Plan was created for a different rule contract' });
+
+    // Reject unverifiable legacy plans without embedded contract
+    if (!plan.contract) {
+      return res.status(400).json({
+        error: 'Cannot execute unverifiable legacy test plan without embedded rule contract',
+      });
     }
+
+    // If client supplied a contract, verify that every field matches the approved plan's contract
+    if (contract) {
+      if (contract.id !== plan.contract.id) {
+        return res.status(400).json({
+          error: `Plan was created for a different rule contract (Contract ID mismatch: submitted '${contract.id}' does not match approved plan '${plan.contract.id}')`,
+        });
+      }
+      if (contract.threshold !== plan.contract.threshold) {
+        return res.status(400).json({
+          error: `Contract threshold mismatch: submitted ${contract.threshold} does not match approved plan ${plan.contract.threshold}`,
+        });
+      }
+      if (contract.operator !== plan.contract.operator) {
+        return res.status(400).json({
+          error: `Contract operator mismatch: submitted '${contract.operator}' does not match approved plan '${plan.contract.operator}'`,
+        });
+      }
+      if (contract.unit !== plan.contract.unit) {
+        return res.status(400).json({
+          error: `Contract unit mismatch: submitted '${contract.unit}' does not match approved plan '${plan.contract.unit}'`,
+        });
+      }
+      if (contract.fieldName !== plan.contract.fieldName) {
+        return res.status(400).json({
+          error: `Contract fieldName mismatch: submitted '${contract.fieldName}' does not match approved plan '${plan.contract.fieldName}'`,
+        });
+      }
+      if (contract.sourceExcerpt !== plan.contract.sourceExcerpt) {
+        return res.status(400).json({
+          error: `Contract sourceExcerpt mismatch: submitted excerpt does not match approved plan excerpt`,
+        });
+      }
+    }
+
+    // Always derive the executed contract strictly from the approved server plan
+    const executedContract = plan.contract;
 
     // 2. Concurrency lock: at most one active run
     if (executionRunner.isRunActive()) {
@@ -43,8 +84,8 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
     const runId = crypto.randomUUID();
     const port = Number(req.socket.localPort) || SERVER_CONFIG.port;
 
-    // Start asynchronous execution
-    await executionRunner.startRun(runId, plan, contract, port);
+    // Start asynchronous execution with the authoritative approved contract
+    await executionRunner.startRun(runId, plan, executedContract, port);
 
     res.status(201).json({ runId, status: 'RUNNING' });
   } catch (err: unknown) {
@@ -92,6 +133,30 @@ runsRouter.get('/api/runs/:id/events', async (req: Request, res: Response) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
+
+  // If the run is already in a terminal state, immediately dispatch the authoritative terminal event
+  const isTerminal = [
+    'COMPLETED_CONSISTENT',
+    'COMPLETED_MISMATCHES',
+    'COMPLETED_WITH_UNCERTAINTY',
+    'CANCELLED_PARTIAL',
+    'FAILED',
+  ].includes(run.status);
+
+  if (isTerminal) {
+    res.write(`event: connected\ndata: {"status":"connected"}\n\n`);
+    if (run.status === 'CANCELLED_PARTIAL') {
+      res.write(`id: 1\nevent: run_cancelled\ndata: ${JSON.stringify(run)}\n\n`);
+    } else if (run.status === 'FAILED') {
+      res.write(
+        `id: 1\nevent: run_failed\ndata: ${JSON.stringify({ error: 'Verification run failed or was interrupted', snapshot: run })}\n\n`
+      );
+    } else {
+      res.write(`id: 1\nevent: run_completed\ndata: ${JSON.stringify(run)}\n\n`);
+    }
+    res.end();
+    return;
+  }
 
   const lastEventIdHeader = req.headers['last-event-id'];
   const lastEventId = typeof lastEventIdHeader === 'string' ? Number(lastEventIdHeader) : undefined;

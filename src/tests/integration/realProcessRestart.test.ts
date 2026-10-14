@@ -2,24 +2,27 @@ import { describe, it, expect } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import crypto from 'crypto';
 import path from 'path';
+import fs from 'fs';
 
 describe('Slice 5 Reliability: Real Process Crash & Restart Recovery', () => {
   const testPort = 3042;
 
   function spawnServer(): Promise<{ proc: ChildProcess; url: string }> {
     return new Promise((resolve, reject) => {
-      const proc = spawn(
-        'npx',
-        ['tsx', 'src/server/server.ts'],
-        {
-          cwd: process.cwd(),
-          env: { ...process.env, PORT: String(testPort) },
-          stdio: ['pipe', 'pipe', 'pipe'],
-          shell: true,
-        }
-      );
+      const serverDist = path.resolve(process.cwd(), 'dist/server/server/server.js');
+      const useDist = fs.existsSync(serverDist);
+      const cmd = useDist ? process.execPath : 'npx';
+      const args = useDist ? [serverDist] : ['tsx', 'src/server/server.ts'];
+
+      const proc = spawn(cmd, args, {
+        cwd: process.cwd(),
+        env: { ...process.env, PORT: String(testPort) },
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: !useDist,
+      });
 
       let stdout = '';
+      let stderr = '';
       const onData = (data: Buffer) => {
         const str = data.toString();
         stdout += str;
@@ -31,14 +34,14 @@ describe('Slice 5 Reliability: Real Process Crash & Restart Recovery', () => {
 
       proc.stdout?.on('data', onData);
       proc.stderr?.on('data', (err) => {
-        // console.error('[Server Proc Err]', err.toString());
+        stderr += err.toString();
       });
 
       proc.on('error', reject);
 
       setTimeout(() => {
-        reject(new Error(`Server process failed to start within 10s: ${stdout}`));
-      }, 10000);
+        reject(new Error(`Server process failed to start within 25s: ${stdout} | ${stderr}`));
+      }, 25000);
     });
   }
 

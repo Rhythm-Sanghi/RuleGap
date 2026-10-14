@@ -190,7 +190,7 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
               type="button"
               className="btn btn-primary"
               onClick={onConfirm}
-              disabled={disabled || !fieldName.trim() || threshold === undefined}
+              disabled={disabled || !fieldName.trim() || threshold === undefined || !sourceExcerpt.trim()}
               style={{ width: '100%' }}
             >
               Confirm Rule Contract & Derive Plan
