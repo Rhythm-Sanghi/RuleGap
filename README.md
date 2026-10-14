@@ -48,7 +48,7 @@ Historical verification runs are preserved immutably, allowing stakeholders to c
 - **Hermetic Security Perimeter**: All browser contexts block external network routes, unrequested popups, and service workers, restricting execution strictly to `127.0.0.1`.
 - **Anti-CSRF & Host Header Validation**: All state-changing API endpoints require the custom `X-RuleGap-Client: true` header and validate the `Host` header.
 - **Evidence Integrity**: Never claims universal correctness or complete form coverage from finite samples. Reports consistency strictly across tested values with explicit sampling disclaimers.
-- **Crash Recovery**: Active verification runs maintain atomic filesystem checkpoints (`.active-[runId].json`), safely reconciling interrupted runs to `INTERRUPTED_CRASH` upon process restart.
+- **Crash Recovery**: Active verification runs maintain atomic filesystem checkpoints (`.active-[runId].json`), safely reconciling interrupted runs to `FAILED` (with in-flight observations tagged as `INTERRUPTED`) upon process restart.
 
 ---
 
@@ -63,8 +63,8 @@ Historical verification runs are preserved immutably, allowing stakeholders to c
 
 1. **Clone the repository and install dependencies**:
    ```bash
-   git clone https://github.com/example/rulegap.git
-   cd rulegap
+   git clone https://github.com/Rhythm-Sanghi/RuleGap.git
+   cd RuleGap
    npm install
    ```
 

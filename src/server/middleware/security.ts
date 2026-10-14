@@ -1,25 +1,32 @@
 import { Request, Response, NextFunction } from 'express';
-import { SERVER_CONFIG } from '../config.js';
 
 /**
  * Validates Host header to ensure requests are directed strictly to local address.
  */
 export function hostHeaderValidation(req: Request, res: Response, next: NextFunction): void {
   const host = req.headers.host;
-  const allowed = [
-    `127.0.0.1:${SERVER_CONFIG.port}`,
-    `localhost:${SERVER_CONFIG.port}`,
-  ];
 
   if (!host) {
     res.status(403).json({ error: 'Forbidden: Missing Host header' });
     return;
   }
 
-  // Allow dynamic test ports on 127.0.0.1 or localhost
-  const isLocalHost = host.startsWith('127.0.0.1:') || host.startsWith('localhost:');
-  if (!isLocalHost && !allowed.includes(host)) {
-    res.status(403).json({ error: `Forbidden: Untrusted Host header '${host}'` });
+  try {
+    // Parse complete hostname and port strictly without relying on substring prefixes
+    const parsed = new URL(`http://${host}`);
+    const hostname = parsed.hostname;
+    const port = parsed.port ? Number(parsed.port) : 80;
+
+    const isAllowedHost =
+      hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '[::1]';
+    const isValidPort = Number.isInteger(port) && port >= 1 && port <= 65535;
+
+    if (!isAllowedHost || !isValidPort) {
+      res.status(403).json({ error: `Forbidden: Untrusted Host header '${host}'` });
+      return;
+    }
+  } catch {
+    res.status(403).json({ error: `Forbidden: Malformed Host header '${host}'` });
     return;
   }
 

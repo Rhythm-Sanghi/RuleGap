@@ -1,15 +1,10 @@
 import { useState } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+// @ts-expect-error Vite URL query import for web worker asset
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url';
 
-// Configure pdfjs worker in Vite
-try {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-    'pdfjs-dist/build/pdf.worker.mjs',
-    import.meta.url
-  ).toString();
-} catch {
-  // Fallback if URL resolution fails
-}
+// Configure pdfjs worker using Vite asset URL
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
 
 export interface ExtractedPdfResult {
   text: string;

@@ -201,11 +201,11 @@ export function useVerificationRun() {
         });
 
         sse.onerror = () => {
-          // Polling fallback if SSE connection is dropped
+          // Polling fallback if SSE connection is dropped or ends
           fetch(`/api/runs/${runId}`)
-            .then((r) => r.json())
-            .then((data: VerificationRunSnapshot) => {
-              if (data && data.status !== 'RUNNING') {
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data: VerificationRunSnapshot | null) => {
+              if (data && data.status !== 'RUNNING' && data.status !== 'QUEUED') {
                 setActiveRunSnapshot(data);
                 setSelectedRunSnapshot(data);
                 setHistoricalRuns((prev) => {
@@ -213,6 +213,7 @@ export function useVerificationRun() {
                   return [data, ...filtered];
                 });
                 setIsRunning(false);
+                setIsCancelling(false);
                 sse.close();
                 fetchRunHistory();
               }

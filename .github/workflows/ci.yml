@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    name: Build & Verify (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20.x, 24.x]
+
+    env:
+      RULEGAP_DATA_DIR: /tmp/rulegap-ci-${{ matrix.node-version }}
+      CI: 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies (clean)
+        run: npm ci
+
+      - name: Install Playwright Chromium with system dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Build client and server bundles
+        run: npm run build
+
+      - name: Dependency security audit
+        run: |
+          echo "Running dependency security audit..."
+          npm audit --omit=dev || true
+          npm audit --audit-level=critical
+
+      - name: Execute full test suite
+        run: npm test

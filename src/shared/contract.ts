@@ -40,6 +40,7 @@ export type BoundaryTestCase = z.infer<typeof BoundaryTestCaseSchema>;
 export const TestPlanRecordSchema = z.object({
   planId: z.string().uuid(),
   contractId: z.string().uuid(),
+  contract: RuleContractSchema.optional(), // Optional in schema for backward-compat loading, but verified at execution
   fixtureId: z.literal('scholarship'),
   fixtureMode: z.enum(['inconsistent', 'corrected']),
   targetFieldSelector: z.literal('#annual-income'),

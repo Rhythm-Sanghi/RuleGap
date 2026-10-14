@@ -148,21 +148,29 @@ export function computeSummaryCounts(
   let interrupted = 0;
 
   for (const obs of observations) {
-    if (obs.lifecycleState === 'NOT_EXECUTED') {
+    if (
+      obs.lifecycleState === 'NOT_EXECUTED' ||
+      obs.lifecycleState === 'PENDING' ||
+      obs.lifecycleState === 'RUNNING'
+    ) {
       notExecuted++;
     } else if (obs.lifecycleState === 'INTERRUPTED') {
       interrupted++;
-    } else if (obs.classification === 'CONSISTENT') {
-      consistent++;
-    } else if (obs.classification === 'CONFIRMED_MISMATCH') {
-      confirmedMismatch++;
-    } else if (obs.classification === 'INCONCLUSIVE') {
-      inconclusive++;
-    } else if (obs.classification === 'EXECUTION_ERROR') {
-      executionError++;
+    } else if (obs.lifecycleState === 'COMPLETED') {
+      if (obs.classification === 'CONSISTENT') {
+        consistent++;
+      } else if (obs.classification === 'CONFIRMED_MISMATCH') {
+        confirmedMismatch++;
+      } else if (obs.classification === 'INCONCLUSIVE') {
+        inconclusive++;
+      } else if (obs.classification === 'EXECUTION_ERROR') {
+        executionError++;
+      } else {
+        // Fallback for unclassified completed observation
+        inconclusive++;
+      }
     } else {
-      // Default unclassified completed observation
-      inconclusive++;
+      notExecuted++;
     }
   }
 

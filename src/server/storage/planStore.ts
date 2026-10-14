@@ -18,12 +18,17 @@ export interface CreatePlanInput {
 }
 
 export class PlanStore {
-  private baseDir: string;
+  private customBaseDir?: string;
   private inMemoryPlans: Map<string, TestPlanRecord> = new Map();
 
-  constructor(baseDir: string = SERVER_CONFIG.plansStorageDir) {
-    this.baseDir = baseDir;
-    fs.mkdirSync(this.baseDir, { recursive: true });
+  constructor(baseDir?: string) {
+    this.customBaseDir = baseDir;
+  }
+
+  get baseDir(): string {
+    const dir = this.customBaseDir || SERVER_CONFIG.plansStorageDir;
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
   }
 
   /**
@@ -48,6 +53,7 @@ export class PlanStore {
     const planRecord: TestPlanRecord = {
       planId,
       contractId: contract.id,
+      contract, // Full canonical contract bound to this plan
       fixtureId,
       fixtureMode,
       targetFieldSelector,

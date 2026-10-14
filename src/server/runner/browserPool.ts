@@ -21,9 +21,19 @@ export class BrowserPool {
 
     this.isLaunching = true;
     try {
+      // In containerized Linux CI environments without user namespaces, --no-sandbox is required.
+      // On standard desktop environments (Windows, macOS), OS sandboxing is preserved.
+      const launchArgs: string[] = ['--disable-dev-shm-usage'];
+      const isLinuxCI =
+        process.platform === 'linux' &&
+        (Boolean(process.env.CI) || (typeof process.getuid === 'function' && process.getuid() === 0));
+      if (isLinuxCI || process.env.RULEGAP_CHROMIUM_NO_SANDBOX === 'true') {
+        launchArgs.push('--no-sandbox', '--disable-setuid-sandbox');
+      }
+
       this.browser = await chromium.launch({
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+        args: launchArgs,
       });
       return this.browser;
     } finally {
