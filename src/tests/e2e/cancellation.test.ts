@@ -22,9 +22,12 @@ describe('Slice 3 E2E: Execution Cancellation Lifecycle', () => {
 
   afterAll(async () => {
     await browserPool.close();
-    await new Promise<void>((resolve) => {
-      server.close(() => resolve());
-    });
+    if (server) {
+      server.closeAllConnections?.();
+      await new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    }
   });
 
   it('safely cancels an in-flight verification run, closes browser contexts, and persists CANCELLED_PARTIAL', async () => {
