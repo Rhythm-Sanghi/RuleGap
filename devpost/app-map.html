@@ -5,218 +5,374 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RuleGap — Architecture & Code Tour Map</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0f19;
+      --surface: #111827;
+      --surface-border: #1f293d;
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --consistent: #10b981;
+      --mismatch: #ef4444;
+      --inconclusive: #f59e0b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #f8fafc;
-      color: #0f172a;
-      line-height: 1.55;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      line-height: 1.5;
       padding: 32px 20px;
     }
-    .container { max-width: 960px; margin: 0 auto; }
-    header {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
     }
-    h1 { font-size: 1.5rem; font-weight: 700; color: #0f172a; margin-bottom: 4px; }
-    .tagline { color: #64748b; font-size: 0.9rem; margin-bottom: 12px; }
+
+    header {
+      border-bottom: 1px solid var(--surface-border);
+      padding-bottom: 24px;
+      margin-bottom: 32px;
+    }
+
+    .masthead {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #ffffff;
+    }
+
+    .tagline {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
     .badge {
       display: inline-block;
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 3px 8px;
+      padding: 4px 10px;
       border-radius: 4px;
-      background: #eff6ff;
-      color: #2563eb;
-      border: 1px solid #bfdbfe;
+      font-size: 0.75rem;
+      font-family: var(--mono);
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      background: var(--surface-border);
+      color: var(--text);
     }
+
+    .badge-accent {
+      background: rgba(37, 99, 235, 0.2);
+      color: #60a5fa;
+      border: 1px solid rgba(37, 99, 235, 0.4);
+    }
+
     .panel {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
       border-radius: 8px;
-      padding: 20px 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      padding: 24px;
+      margin-bottom: 28px;
     }
-    h2 { font-size: 1.15rem; font-weight: 600; color: #0f172a; margin-bottom: 12px; }
-    h3 { font-size: 0.95rem; font-weight: 600; color: #1e293b; margin-bottom: 6px; }
-    p { margin-bottom: 12px; font-size: 0.875rem; color: #334155; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 0.825rem; }
-    .diagram-card {
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 16px;
+
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
       margin-bottom: 16px;
-      text-align: center;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
-    .route-stop {
-      border-left: 3px solid #2563eb;
-      padding-left: 16px;
-      margin-bottom: 20px;
-    }
-    .route-title { font-weight: 600; font-size: 0.9rem; color: #0f172a; }
-    .route-path { color: #2563eb; font-size: 0.825rem; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    .pointer-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 12px;
-      margin-top: 12px;
-    }
-    .pointer-item {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
+
+    p { margin-bottom: 14px; font-size: 0.92rem; color: #d1d5db; }
+
+    .diagram-container {
+      background: #080c14;
+      border: 1px solid var(--surface-border);
       border-radius: 6px;
-      padding: 12px 14px;
+      padding: 20px;
+      margin: 20px 0;
+      overflow-x: auto;
     }
-    .pointer-item strong { display: block; font-size: 0.85rem; color: #0f172a; margin-bottom: 4px; }
-    .practice-box {
-      background: #ecfdf5;
-      border: 1px solid #a7f3d0;
+
+    .route-step {
+      border-left: 3px solid var(--accent);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 0 6px 6px 0;
+    }
+
+    .route-step h3 {
+      font-size: 1rem;
+      color: #ffffff;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .file-path {
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      color: #60a5fa;
+      background: rgba(37, 99, 235, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .anchor {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    .grid-pointers {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .pointer-card {
+      background: #080c14;
+      border: 1px solid var(--surface-border);
       border-radius: 6px;
       padding: 16px;
-      margin-top: 12px;
     }
-    .practice-box strong { color: #065f46; font-size: 0.9rem; }
-    .practice-box p { color: #064e3b; margin-bottom: 0; margin-top: 6px; }
-    footer { text-align: center; font-size: 0.75rem; color: #64748b; margin-top: 32px; }
+
+    .pointer-title {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .pointer-loc {
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: #60a5fa;
+      margin-bottom: 8px;
+    }
+
+    .pointer-desc {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+      margin-bottom: 0;
+    }
+
+    .practice-callout {
+      border-left: 4px solid var(--consistent);
+      background: rgba(16, 185, 129, 0.05);
+      border-radius: 0 6px 6px 0;
+      padding: 16px;
+      margin-top: 14px;
+    }
+
+    .practice-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #34d399;
+      margin-bottom: 6px;
+    }
+
+    .mono { font-family: var(--mono); }
+    code { font-family: var(--mono); font-size: 0.85em; background: rgba(255,255,255,0.08); padding: 2px 4px; border-radius: 3px; }
+
+    footer {
+      text-align: center;
+      padding-top: 24px;
+      border-top: 1px solid var(--surface-border);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+      <div class="masthead">
         <div>
-          <h1>RuleGap — Application Map & Architectural Tour</h1>
-          <p class="tagline">&ldquo;The rules say yes. The form says no.&rdquo; — Software Consistency Verifier</p>
+          <h1>RuleGap — Application Map & Architectural Route</h1>
+          <p class="tagline">"The rules say yes. The form says no." Local-first software consistency verifier.</p>
         </div>
-        <span class="badge">Reference Guide</span>
+        <div>
+          <span class="badge badge-accent">Devpost Build With AI: Basics 2026</span>
+        </div>
       </div>
-      <p style="margin-bottom: 0;">
-        This document serves as an offline take-home guide to RuleGap&rsquo;s codebase structure, verified core workflows, and architectural design decisions.
-      </p>
     </header>
 
-    <div class="panel">
-      <h2>Architecture & Data Flow Diagram</h2>
-      <p>How an ingested policy threshold becomes a real Playwright black-box observation and exportable evidence:</p>
+    <!-- 1. Overview -->
+    <section class="panel">
+      <h2>1. Overview & Core Architecture</h2>
+      <p>
+        RuleGap detects and proves discrepancies where a published eligibility rule permits an applicant, but an online application form actively rejects them. It is built as a local-first developer instrument with three primary architectural components:
+      </p>
+      <ul style="padding-left: 20px; color: #d1d5db; font-size: 0.9rem; margin-bottom: 16px;">
+        <li style="margin-bottom: 6px;"><strong>Contract & Boundary Generator:</strong> Ingests policy guidelines or PDFs and extracts a deterministic rule contract (e.g., <code>income &lt;= 300000 INR</code>). Deterministically derives exact boundary points (<code>299999</code>, <code>300000</code>, <code>300001</code>) and demonstration probes.</li>
+        <li style="margin-bottom: 6px;"><strong>Black-Box Browser Runner:</strong> Spawns hermetic Chromium instances via Playwright under route-restricted network isolation, submitting test values into the actual form DOM and capturing explicit feedback messages and viewport screenshots.</li>
+        <li style="margin-bottom: 6px;"><strong>Evidentiary Workbench & Export:</strong> Provides a dense Workshop Gridline UI with 4-state summary metrics, synchronized run history, deep screenshot inspection drawer, and a self-contained offline HTML report generator with base64-embedded screenshots.</li>
+      </ul>
 
-      <div class="diagram-card">
-        <svg viewBox="0 0 880 200" width="100%" height="auto" style="max-height: 200px;" aria-label="RuleGap verification pipeline diagram">
-          <rect x="10" y="30" width="170" height="70" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="2" />
-          <text x="95" y="60" text-anchor="middle" font-weight="600" font-size="12" fill="#0f172a">1. Policy Contract</text>
-          <text x="95" y="80" text-anchor="middle" font-size="10" fill="#64748b">₹300,000 threshold (&lt;=)</text>
-
-          <line x1="180" y1="65" x2="230" y2="65" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
-
-          <rect x="230" y="30" width="180" height="70" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="2" />
-          <text x="320" y="55" text-anchor="middle" font-weight="600" font-size="12" fill="#0f172a">2. Server Plan & Gate</text>
-          <text x="320" y="72" text-anchor="middle" font-size="10" fill="#64748b">T-1, T, T+1, Probes</text>
-          <text x="320" y="88" text-anchor="middle" font-size="10" fill="#059669">Authoritative Approval</text>
-
-          <line x1="410" y1="65" x2="460" y2="65" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
-
-          <rect x="460" y="30" width="190" height="70" rx="6" fill="#ffffff" stroke="#2563eb" stroke-width="2" />
-          <text x="555" y="55" text-anchor="middle" font-weight="600" font-size="12" fill="#0f172a">3. Playwright Runner</text>
-          <text x="555" y="72" text-anchor="middle" font-size="10" fill="#64748b">Hermetic Chromium Context</text>
-          <text x="555" y="88" text-anchor="middle" font-size="10" fill="#64748b">Observable DOM Outcomes</text>
-
-          <line x1="650" y1="65" x2="700" y2="65" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)" />
-
-          <rect x="700" y="30" width="170" height="70" rx="6" fill="#ffffff" stroke="#059669" stroke-width="2" />
-          <text x="785" y="55" text-anchor="middle" font-weight="600" font-size="12" fill="#0f172a">4. Evidence Engine</text>
-          <text x="785" y="72" text-anchor="middle" font-size="10" fill="#dc2626">4 Confirmed Mismatches</text>
-          <text x="785" y="88" text-anchor="middle" font-size="10" fill="#059669">Offline HTML Report</text>
-
+      <div class="diagram-container">
+        <svg viewBox="0 0 860 160" width="100%" height="160" xmlns="http://www.w3.org/2000/svg">
+          <style>
+            .box { fill: #1e293b; stroke: #3b82f6; stroke-width: 1.5; rx: 6; }
+            .box-obs { fill: #1e293b; stroke: #10b981; stroke-width: 1.5; rx: 6; }
+            .box-eval { fill: #1e293b; stroke: #f59e0b; stroke-width: 1.5; rx: 6; }
+            .box-out { fill: #1e293b; stroke: #ef4444; stroke-width: 1.5; rx: 6; }
+            .txt-title { fill: #ffffff; font-family: ui-monospace, monospace; font-size: 12px; font-weight: bold; }
+            .txt-sub { fill: #94a3b8; font-family: sans-serif; font-size: 10px; }
+            .arrow { stroke: #64748b; stroke-width: 1.5; marker-end: url(#arrowhead); fill: none; }
+          </style>
           <defs>
-            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-              <path d="M 0 1 L 8 5 L 0 9 z" fill="#64748b" />
+            <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+              <polygon points="0 0, 8 3, 0 6" fill="#64748b" />
             </marker>
           </defs>
+
+          <!-- Step 1: Policy Ingestion -->
+          <rect x="10" y="30" width="180" height="90" class="box" />
+          <text x="22" y="58" class="txt-title">1. Policy Contract</text>
+          <text x="22" y="78" class="txt-sub">income &lt;= 300,000 INR</text>
+          <text x="22" y="98" class="txt-sub">Deterministic Boundaries</text>
+
+          <path d="M 190 75 L 225 75" class="arrow" />
+
+          <!-- Step 2: Plan Approval -->
+          <rect x="230" y="30" width="180" height="90" class="box-eval" />
+          <text x="242" y="58" class="txt-title">2. Plan Approval</text>
+          <text x="242" y="78" class="txt-sub">Pre-flight Case Table</text>
+          <text x="242" y="98" class="txt-sub">Authoritative Plan Gate</text>
+
+          <path d="M 410 75 L 445 75" class="arrow" />
+
+          <!-- Step 3: Browser Execution -->
+          <rect x="450" y="30" width="180" height="90" class="box-obs" />
+          <text x="462" y="58" class="txt-title">3. Black-Box Runner</text>
+          <text x="462" y="78" class="txt-sub">Playwright Form Inputs</text>
+          <text x="462" y="98" class="txt-sub">DOM Feedback & PNGs</text>
+
+          <path d="M 630 75 L 665 75" class="arrow" />
+
+          <!-- Step 4: Discrepancy Evidence -->
+          <rect x="670" y="30" width="180" height="90" class="box-out" />
+          <text x="682" y="58" class="txt-title">4. Evidence Output</text>
+          <text x="682" y="78" class="txt-sub">4 Mismatches Confirmed</text>
+          <text x="682" y="98" class="txt-sub">Standalone Offline HTML</text>
         </svg>
       </div>
-    </div>
+    </section>
 
-    <div class="panel">
-      <h2>The Core Guided Code Tour Route</h2>
-      <p>Follow one complete verification cycle through the actual codebase:</p>
+    <!-- 2. Code Route -->
+    <section class="panel">
+      <h2>2. Three-Stop Code Route</h2>
+      <p>Follow a single verification action from rule derivation to browser assertion and offline export:</p>
 
-      <div class="route-stop">
-        <div class="route-title">Stop 1: Deterministic Boundary Derivation & Approval Gate</div>
-        <div class="route-path">src/shared/ruleEngine.ts &rarr; generateBoundaryTestCases()</div>
-        <div class="route-path">src/server/storage/planStore.ts &rarr; createPlan() & approvePlan()</div>
-        <p style="margin-top: 6px;">
-          The rule engine mathematically derives exact boundary cases (<span class="mono">threshold - 1</span>, <span class="mono">threshold</span>, <span class="mono">threshold + 1</span>) and demonstration probes. The server records an immutable <span class="mono">TestPlanRecord</span> with <span class="mono">isApproved: false</span> until the user explicitly confirms the plan snapshot via <span class="mono">POST /api/plans/:id/approve</span>.
-        </p>
-      </div>
-
-      <div class="route-stop">
-        <div class="route-title">Stop 2: Independent Black-Box Form Observation</div>
-        <div class="route-path">src/server/runner/formObserver.ts &rarr; observeFormSubmission()</div>
-        <div class="route-path">src/server/runner/browserPool.ts &rarr; createHermeticContext()</div>
-        <p style="margin-top: 6px;">
-          Playwright launches an isolated Chromium browser context with network route interception restricting all requests strictly to <span class="mono">127.0.0.1</span>. The observer enters the value, clicks submit, and races DOM status indicators (<span class="mono">[data-testid=&quot;status-accepted&quot;]</span> vs <span class="mono">[data-testid=&quot;field-error&quot;]</span>) without reading internal form threshold variables.
-        </p>
-      </div>
-
-      <div class="route-stop">
-        <div class="route-title">Stop 3: Discrepancy Classification & Atomic Checkpointing</div>
-        <div class="route-path">src/shared/ruleEngine.ts &rarr; compareOutcomes()</div>
-        <div class="route-path">src/server/storage/runStore.ts &rarr; saveActiveCheckpoint() & reconcileStartupCrashes()</div>
-        <p style="margin-top: 6px;">
-          The comparator compares the policy expectation with the observed form outcome, categorizing the test into one of four mutually exclusive classifications (<span class="mono">CONSISTENT</span>, <span class="mono">CONFIRMED_MISMATCH</span>, <span class="mono">INCONCLUSIVE</span>, <span class="mono">EXECUTION_ERROR</span>). Inconclusive and unrelated errors can never produce a false mismatch claim. Active runs write atomic <span class="mono">.active-[runId].json</span> progress files to survive sudden process restarts.
-        </p>
-      </div>
-
-      <div class="route-stop" style="margin-bottom: 0;">
-        <div class="route-title">Stop 4: Self-Contained Offline Evidence Generation</div>
-        <div class="route-path">src/server/report/reportGenerator.ts &rarr; generateHtmlEvidenceReport()</div>
-        <p style="margin-top: 6px;">
-          Serializes the immutable snapshot, strict HTML-escaped DOM feedback, and base64-encoded screenshot captures into a single, offline HTML file with zero external script or style dependencies.
-        </p>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>To Change This, Start Here</h2>
-      <div class="pointer-grid">
-        <div class="pointer-item">
-          <strong>Add New Comparison Operators (e.g. &lsquo;between&rsquo;, &lsquo;!=&rsquo;)</strong>
-          <span class="mono">src/shared/contract.ts</span> (<span class="mono">NumericOperatorSchema</span>) and <span class="mono">src/shared/ruleEngine.ts</span> (<span class="mono">evaluateNumericRule</span>).
-        </div>
-        <div class="pointer-item">
-          <strong>Add New Target Form Fixtures</strong>
-          <span class="mono">src/server/routes/fixtures.ts</span> (mount new synthetic form) and <span class="mono">src/server/storage/planStore.ts</span> (<span class="mono">fixtureId</span>).
-        </div>
-        <div class="pointer-item">
-          <strong>Adjust Execution Timeouts or Storage Quotas</strong>
-          <span class="mono">src/server/config.ts</span> (<span class="mono">SERVER_CONFIG</span> properties <span class="mono">actionTimeoutMs</span>, <span class="mono">maxScreenshotBytes</span>).
-        </div>
-        <div class="pointer-item">
-          <strong>Modify Workbench Visual Theme & Colors</strong>
-          <span class="mono">src/client/styles/tokens.css</span> (Workshop + Gridline design tokens).
-        </div>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>A Practice to Reuse</h2>
-      <div class="practice-box">
-        <strong>Genuine Black-Box Observability & Sampling Disclaimers</strong>
+      <div class="route-step">
+        <h3>Stop 1: Rule Engine & Boundary Derivation</h3>
+        <p class="file-path">src/shared/ruleEngine.ts <span class="anchor">-> generateBoundaryTestCases</span></p>
         <p>
-          Software verifiers must never inspect internal form validation variables to confirm agreement, as internal code can harbor the exact bug being investigated. By restricting the verifier strictly to user-observable DOM outcomes (accessibility roles, status indicators, and feedback messages), verification remains independent and authoritative. Additionally, pairing finite boundary samples with honest discrepancy language (&ldquo;inconsistencies confirmed at tested values between X and Y&rdquo;) avoids the dangerous false premise of claiming universal form correctness from a finite set of tests.
+          Generates exact boundary probe integers (e.g. <code>[threshold - 1, threshold, threshold + 1]</code>) and tags each case with an unequivocal mathematical expectation (<code>ACCEPT</code> or <code>REJECT</code>). This ensures test generation is deterministic and decoupled from browser automation.
         </p>
       </div>
-    </div>
+
+      <div class="route-step">
+        <h3>Stop 2: Independent Black-Box Form Observer</h3>
+        <p class="file-path">src/server/runner/formObserver.ts <span class="anchor">-> observeFormSubmission</span></p>
+        <p>
+          Navigates a fresh, hermetic Playwright page context to the target form, enters the test probe value, clicks submit, and extracts the resulting DOM state without reading any client validation logic. It records whether the form accepted the input, rejected it with specific error text, or yielded an inconclusive state, and captures a timestamped viewport screenshot.
+        </p>
+      </div>
+
+      <div class="route-step">
+        <h3>Stop 3: Discrepancy Classification & Offline Evidence Export</h3>
+        <p class="file-path">src/server/report/reportGenerator.ts <span class="anchor">-> generateHtmlEvidenceReport</span></p>
+        <p>
+          Binds the expected policy outcome against the observed form response. If the policy says <code>ACCEPT</code> but the form yields <code>REJECTED</code>, it marks a <code>CONFIRMED_MISMATCH</code>. It packages the entire run into a self-contained, single-file HTML report with embedded base64 screenshots and discrete sampling disclaimers.
+        </p>
+      </div>
+    </section>
+
+    <!-- 3. To Change This, Start Here -->
+    <section class="panel">
+      <h2>3. "To Change This, Start Here" Extension Pointers</h2>
+      <div class="grid-pointers">
+        <div class="pointer-card">
+          <div class="pointer-title">Add New Relational Operators</div>
+          <div class="pointer-loc">src/shared/contract.ts &amp; ruleEngine.ts</div>
+          <p class="pointer-desc">Extend <code>OperatorSchema</code> (e.g., adding <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>=</code>) and update boundary derivation rules in <code>generateBoundaryTestCases</code>.</p>
+        </div>
+
+        <div class="pointer-card">
+          <div class="pointer-title">Support a New Form Interface</div>
+          <div class="pointer-loc">src/server/routes/fixtures.ts &amp; sampleData.ts</div>
+          <p class="pointer-desc">Add a new fixture interface route or configure custom target field selectors, submit buttons, and container endpoints.</p>
+        </div>
+
+        <div class="pointer-card">
+          <div class="pointer-title">Customize Report Styling or Formatting</div>
+          <div class="pointer-loc">src/server/report/reportTemplate.ts</div>
+          <p class="pointer-desc">Adjust the inline CSS styling, sampling disclosure banners, or table layout of the standalone offline evidence report.</p>
+        </div>
+
+        <div class="pointer-card">
+          <div class="pointer-title">Configure Multi-Browser Verification</div>
+          <div class="pointer-loc">src/server/runner/browserPool.ts</div>
+          <p class="pointer-desc">Extend the Playwright pool to launch Firefox or WebKit instances alongside Chromium for cross-browser consistency verification.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Reusable Practice -->
+    <section class="panel">
+      <h2>4. A Practice to Reuse: Three-State Verification Invariants</h2>
+      <div class="practice-callout">
+        <div class="practice-title">Decoupling Policy Expectations from Form Observations</div>
+        <p style="margin-bottom: 8px;">
+          A common pitfall in automated compliance testing is treating any form failure as a rule discrepancy. If a form fails to submit due to a network glitch, missing selector, or unrelated required field, classifying that as a "Policy Bug" produces false alarms and erodes developer trust.
+        </p>
+        <p style="margin-bottom: 0;">
+          <strong>The Reusable Pattern:</strong> Model your verification engine with explicit separation:
+          <code>Policy Expectation (ACCEPT | REJECT)</code> vs <code>Observed Form Outcome (ACCEPTED | REJECTED | INCONCLUSIVE)</code>. Only when <code>Expectation === ACCEPT</code> and <code>Observed === REJECTED</code> is a <code>CONFIRMED_MISMATCH</code> emitted. Unrelated errors settle safely as <code>INCONCLUSIVE</code> or <code>EXECUTION_ERROR</code>, preserving evidentiary credibility.
+        </p>
+      </div>
+    </section>
+
+    <!-- 5. Running the App -->
+    <section class="panel">
+      <h2>5. Running RuleGap Locally</h2>
+      <p>RuleGap is fully self-contained and runs with zero external SaaS dependencies or paid API keys:</p>
+      <pre style="background: #080c14; border: 1px solid var(--surface-border); border-radius: 6px; padding: 12px; font-family: var(--mono); font-size: 0.85rem; color: #34d399; margin-bottom: 12px;">
+# Build client and server bundles
+npm run build
+
+# Start local server on 127.0.0.1:3000
+npm start
+
+# Run complete 58-test verification suite
+npm test</pre>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0;">
+        Source commit: <code class="mono">9d7c845</code> • Verified clean against production Playwright Chromium.
+      </p>
+    </section>
 
     <footer>
-      <p>RuleGap &bull; Built with Node.js, Express, React, Vite, Playwright, Zod, and Vitest &bull; MIT License</p>
+      RuleGap — Software Consistency Verifier • Built for Devpost Build With AI: Basics 2026 • MIT Licensed
     </footer>
   </div>
 </body>

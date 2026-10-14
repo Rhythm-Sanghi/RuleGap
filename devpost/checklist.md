@@ -62,23 +62,24 @@ Build mode: fast
 ## Hands-on Checkpoints
 
 - [x] Early usable behavior explored — Slice 2 (Embedded scholarship fixture and real Playwright browser observation verified)
-- [ ] Final kick-the-tires exploration and feedback completed
+- [x] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
 
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
+- [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: [to be recorded during wrap-up]
-Route and stops: [to be recorded during wrap-up]
-Edit outcome: [to be recorded during wrap-up]
-Reflection: [to be recorded during wrap-up]
-Activity mode: [to be recorded during wrap-up]
+Activity and evidence: Focused architectural takeaway connecting the user's Desired Learning Outcome (deterministic boundary generation vs black-box Playwright observation) to the 3-state classification matrix and empirical run history.
+Route and stops: Stop 1: src/shared/ruleEngine.ts (generateBoundaryTestCases), Stop 2: src/server/runner/formObserver.ts (observeFormSubmission), Stop 3: src/server/report/reportGenerator.ts (generateHtmlEvidenceReport).
+Edit outcome: Not applicable (implementation frozen upon approval of final synchronization fixes).
+Reflection: Offered in chat prompt for learner's own reflection; learner requested: "including any required personal reflection questions. Do not invent my answers."
+Activity mode: Focused alternative / architectural takeaway.
 
 ## Revisions
 
+- Synchronized run history selector synchronously upon run completion (`sse.addEventListener('run_completed')`) and mount (`fetchRunHistory(true)`), resolving display desynchronization between dropdown and matrix. Added run ID prefix labels and explicit live-run indicator. Verified via dedicated E2E test `runHistorySync.test.ts`.
