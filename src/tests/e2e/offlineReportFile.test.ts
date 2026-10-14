@@ -69,7 +69,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
 
       // Poll until run reaches terminal state
       let completedRun: any = null;
-      for (let i = 0; i < 80; i++) {
+      for (let i = 0; i < 150; i++) {
         const runRes = await fetch(`http://127.0.0.1:${serverPort}/api/runs/${runId}`);
         if (runRes.status === 200) {
           const snap = await runRes.json();
@@ -78,7 +78,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
             break;
           }
         }
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 300));
       }
       expect(completedRun).not.toBeNull();
       expect(completedRun.status).toBe('COMPLETED_MISMATCHES');

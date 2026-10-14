@@ -138,29 +138,32 @@ export const SourceIngestion: React.FC<SourceIngestionProps> = ({
         )}
 
         {/* Document Metadata Strip */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-          <span>
-            Source: <strong>{sourceDocumentName}</strong> (
-            {sourceType === 'sample_policy'
-              ? 'Sample Demonstration Policy'
-              : sourceType === 'extracted_pdf'
-              ? 'Extracted PDF Text'
-              : sourceType === 'manual_fallback_pdf'
-              ? 'Manually supplied text associated with uploaded PDF'
-              : 'Pasted Text'}
-            )
-          </span>
-          <span>{sourceText.length} characters</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>Source:</span>
+            <strong className="mono" style={{ color: 'var(--text-primary)' }}>{sourceDocumentName}</strong>
+            <span className="badge badge-neutral" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
+              {sourceType === 'sample_policy'
+                ? 'Sample Policy'
+                : sourceType === 'extracted_pdf'
+                ? 'Extracted PDF'
+                : sourceType === 'manual_fallback_pdf'
+                ? 'Manual Fallback'
+                : 'Pasted Text'}
+            </span>
+          </div>
+          <span className="mono" style={{ fontSize: '0.75rem' }}>{sourceText.length} chars</span>
         </div>
 
         {/* Policy Text Box */}
-        <div className="form-group">
+        <div className="form-group" style={{ marginBottom: 0 }}>
           <label htmlFor="policy-text-area" className="form-label">
             Policy Rule Text
           </label>
           <textarea
             id="policy-text-area"
             className="form-textarea"
+            style={{ minHeight: 135, fontFamily: 'var(--font-mono)', fontSize: '0.82rem', lineHeight: 1.45 }}
             value={sourceText}
             onChange={handleTextChange}
             placeholder="Paste policy guidelines or load the sample policy above..."

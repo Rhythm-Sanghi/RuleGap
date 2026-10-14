@@ -18,13 +18,25 @@ export const FixtureControl: React.FC<FixtureControlProps> = ({
           <span className="step-indicator active">3</span>
           <h2 id="fixture-control-heading">Target Form & Fixture Mode</h2>
         </div>
-        <span className="badge badge-neutral">Authorized Fixture</span>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span className="badge badge-neutral">Authorized Fixture</span>
+          <a
+            href={`/fixtures/scholarship?mode=${fixtureMode}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-secondary"
+            style={{ minHeight: 30, padding: '2px 10px', fontSize: '0.78rem', textDecoration: 'none' }}
+            title="Inspect authorized synthetic form in new browser tab"
+          >
+            Open Test Form ↗
+          </a>
+        </div>
       </div>
 
       <div className="panel-body">
         <div className="form-group">
           <label htmlFor="target-form-select" className="form-label">
-            Target Form Interface
+            Target Form Interface (Synthetic Fixture)
           </label>
           <select id="target-form-select" className="form-select" disabled>
             <option value="scholarship">
@@ -47,9 +59,14 @@ export const FixtureControl: React.FC<FixtureControlProps> = ({
         </div>
 
         <div className="form-group" style={{ marginBottom: 0 }}>
-          <label htmlFor="fixture-mode-select" className="form-label">
-            Demonstration Fixture Mode
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <label htmlFor="fixture-mode-select" className="form-label" style={{ marginBottom: 0 }}>
+              Demonstration Fixture Mode
+            </label>
+            <span className="mono" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              {fixtureMode === 'inconsistent' ? 'Form Threshold: ₹2,50,000' : 'Form Threshold: ₹3,00,000'}
+            </span>
+          </div>
           <select
             id="fixture-mode-select"
             className="form-select"
@@ -64,7 +81,7 @@ export const FixtureControl: React.FC<FixtureControlProps> = ({
               Mode B: Corrected Fixture (Form matches policy ₹300,000 threshold)
             </option>
           </select>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 6 }}>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.4 }}>
             {fixtureMode === 'inconsistent'
               ? 'Form rejects values above ₹250,000, creating discrepancies against the ₹300,000 policy rule.'
               : 'Form aligns with policy, accepting all values up to ₹300,000 inclusive.'}
@@ -74,3 +91,4 @@ export const FixtureControl: React.FC<FixtureControlProps> = ({
     </div>
   );
 };
+

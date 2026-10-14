@@ -13,7 +13,7 @@ node_modules/
 dist/
 build/
 coverage/
-.rulegap/
+.rulegap*/
 
 # OS / Editor files
 .DS_Store

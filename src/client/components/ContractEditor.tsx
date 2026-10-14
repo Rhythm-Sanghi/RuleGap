@@ -53,6 +53,26 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
       </div>
 
       <div className="panel-body">
+        {/* Confirmed Contract Summary Card */}
+        {isConfirmed && confirmedContract && (
+          <div style={{ backgroundColor: 'var(--status-consistent-bg)', border: '1px solid var(--status-consistent-border)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--status-consistent)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Confirmed Rule Contract
+              </span>
+              <span className="mono" style={{ fontSize: '0.75rem', color: '#065f46' }}>
+                {confirmedContract.confirmedAt ? new Date(confirmedContract.confirmedAt).toLocaleTimeString() : ''}
+              </span>
+            </div>
+            <div className="mono font-semibold" style={{ fontSize: '0.95rem', color: '#064e3b' }}>
+              {confirmedContract.fieldName} {confirmedContract.operator} ₹{confirmedContract.threshold.toLocaleString('en-IN')} {confirmedContract.unit}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#065f46', marginTop: 4, fontStyle: 'italic' }}>
+              &ldquo;{confirmedContract.sourceExcerpt}&rdquo;
+            </div>
+          </div>
+        )}
+
         {/* Source Excerpt */}
         <div className="form-group">
           <label htmlFor="source-excerpt" className="form-label">

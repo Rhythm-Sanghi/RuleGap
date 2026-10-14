@@ -101,68 +101,74 @@ export const App: React.FC = () => {
       <Header isRunning={isRunning} activeRunId={activeRunSnapshot?.runId || null} />
 
       <main className="workbench-container" role="main">
-        {/* Left Column: Rule & Contract Ingestion */}
-        <div className="workbench-column" aria-label="Rule Contract Workspace">
-          <SourceIngestion
-            sourceText={sourceText}
-            setSourceText={setSourceText}
-            sourceDocumentName={sourceDocumentName}
-            sourceType={sourceType}
-            onLoadSample={loadSamplePolicy}
-            onPdfExtracted={loadExtractedPdf}
-            onFallbackPaste={loadPastedFallback}
-            isConfirmed={isConfirmed}
-            onEdit={handleEditContract}
-          />
+        {/* Top: Two-column Policy & Verification Setup */}
+        <div className="workbench-setup-grid">
+          {/* Left Column: Rule & Contract Ingestion */}
+          <div className="workbench-column" aria-label="Rule Contract Workspace">
+            <SourceIngestion
+              sourceText={sourceText}
+              setSourceText={setSourceText}
+              sourceDocumentName={sourceDocumentName}
+              sourceType={sourceType}
+              onLoadSample={loadSamplePolicy}
+              onPdfExtracted={loadExtractedPdf}
+              onFallbackPaste={loadPastedFallback}
+              isConfirmed={isConfirmed}
+              onEdit={handleEditContract}
+            />
 
-          <ContractEditor
-            fieldName={fieldName}
-            setFieldName={setFieldName}
-            operator={operator}
-            setOperator={setOperator}
-            threshold={threshold}
-            setThreshold={setThreshold}
-            unit={unit}
-            setUnit={setUnit}
-            sourceExcerpt={sourceExcerpt}
-            setSourceExcerpt={setSourceExcerpt}
-            isConfirmed={isConfirmed}
-            confirmedContract={confirmedContract}
-            onConfirm={handleConfirmContract}
-            onEdit={handleEditContract}
-            disabled={isRunning}
-          />
+            <ContractEditor
+              fieldName={fieldName}
+              setFieldName={setFieldName}
+              operator={operator}
+              setOperator={setOperator}
+              threshold={threshold}
+              setThreshold={setThreshold}
+              unit={unit}
+              setUnit={setUnit}
+              sourceExcerpt={sourceExcerpt}
+              setSourceExcerpt={setSourceExcerpt}
+              isConfirmed={isConfirmed}
+              confirmedContract={confirmedContract}
+              onConfirm={handleConfirmContract}
+              onEdit={handleEditContract}
+              disabled={isRunning}
+            />
+          </div>
+
+          {/* Right Column: Verification Target & Plan */}
+          <div className="workbench-column" aria-label="Verification Target & Plan Workspace">
+            <FixtureControl
+              fixtureMode={fixtureMode}
+              onModeChange={handleModeChange}
+              disabled={isRunning}
+            />
+
+            <PreFlightPlan
+              plan={plan}
+              isApproved={isApproved}
+              isGenerating={isGenerating}
+              isApproving={isApproving}
+              planError={planError}
+              onApprove={approvePlan}
+              isRunning={isRunning}
+              isCancelling={isCancelling}
+              onStartRun={handleStartRun}
+              onCancelRun={cancelRun}
+              disabled={!isConfirmed}
+            />
+
+            <RunHistorySelector
+              runs={historicalRuns}
+              selectedRunId={selectedRunSnapshot?.runId || null}
+              onSelectRun={selectRun}
+              disabled={isRunning}
+            />
+          </div>
         </div>
 
-        {/* Right Column: Verification Setup & Evidence Matrix */}
-        <div className="workbench-column" aria-label="Verification Execution & Evidence Workspace">
-          <FixtureControl
-            fixtureMode={fixtureMode}
-            onModeChange={handleModeChange}
-            disabled={isRunning}
-          />
-
-          <PreFlightPlan
-            plan={plan}
-            isApproved={isApproved}
-            isGenerating={isGenerating}
-            isApproving={isApproving}
-            planError={planError}
-            onApprove={approvePlan}
-            isRunning={isRunning}
-            isCancelling={isCancelling}
-            onStartRun={handleStartRun}
-            onCancelRun={cancelRun}
-            disabled={!isConfirmed}
-          />
-
-          <RunHistorySelector
-            runs={historicalRuns}
-            selectedRunId={selectedRunSnapshot?.runId || null}
-            onSelectRun={selectRun}
-            disabled={isRunning}
-          />
-
+        {/* Bottom: Full-Width Results & Verification Evidence Workspace */}
+        <div className="workbench-results-section" aria-label="Verification Results & Evidence Workspace">
           <SummaryBar snapshot={selectedRunSnapshot} isRunning={isRunning} />
 
           <EvidenceMatrix

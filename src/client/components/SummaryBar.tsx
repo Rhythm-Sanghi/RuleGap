@@ -20,17 +20,105 @@ export const SummaryBar: React.FC<SummaryBarProps> = ({ snapshot, isRunning }) =
   const progressPercent = Math.round((completedCount / summaryCounts.totalScheduled) * 100);
 
   return (
-    <div style={{ marginBottom: 20 }}>
-      {/* Progress Bar during active run */}
+    <div className="summary-section" style={{ marginBottom: 20 }}>
+      {/* Active Run Execution Progress Bar */}
       {isRunning && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: 4 }}>
             <span>Executing automated Playwright browser tests...</span>
-            <span className="mono">{completedCount} / {summaryCounts.totalScheduled} ({progressPercent}%)</span>
+            <span className="mono font-semibold">{completedCount} / {summaryCounts.totalScheduled} ({progressPercent}%)</span>
           </div>
           <div className="progress-container">
             <div className="progress-bar-fill" style={{ width: `${progressPercent}%` }} />
           </div>
+        </div>
+      )}
+
+      {/* Prominent Terminal Verdict Callout */}
+      {!isRunning && status !== 'RUNNING' && status !== 'CANCELLATION_REQUESTED' && (
+        <div style={{ marginBottom: 16 }}>
+          {status === 'COMPLETED_MISMATCHES' && (
+            <div className="verdict-banner callout callout-danger" role="alert">
+              <div className="verdict-header">
+                <div className="verdict-headline">
+                  {summaryCounts.confirmedMismatch} of {summaryCounts.totalScheduled} tested values contradict the policy.
+                </div>
+                <span className="badge badge-mismatch">Policy Discrepancy</span>
+              </div>
+              <p className="verdict-detail">
+                <strong>Confirmed Policy Mismatches Detected: </strong>
+                The documented policy explicitly permits these incomes, but the application form rejected them.
+                Discrepancies were confirmed at tested values between{' '}
+                <span className="mono" style={{ fontWeight: 600 }}>₹{sampledMismatchSummary?.lowestMismatchValue?.toLocaleString('en-IN')}</span> and{' '}
+                <span className="mono" style={{ fontWeight: 600 }}>₹{sampledMismatchSummary?.highestMismatchValue?.toLocaleString('en-IN')}</span>.
+              </p>
+              <div className="sampling-disclaimer">
+                {sampledMismatchSummary?.disclaimer || 'Empirical verification across discrete boundary probes. Finite sampling does not guarantee continuous interval behavior.'}
+              </div>
+            </div>
+          )}
+
+          {status === 'COMPLETED_CONSISTENT' && (
+            <div className="verdict-banner callout callout-success" role="status">
+              <div className="verdict-header">
+                <div className="verdict-headline">
+                  All {summaryCounts.totalScheduled} executed cases agree with the documented rule.
+                </div>
+                <span className="badge badge-consistent">Validated Consistent</span>
+              </div>
+              <p className="verdict-detail">
+                <strong>Form Validated Consistent Across Tested Values: </strong>
+                All {summaryCounts.totalScheduled} executed boundary test cases produced validation outcomes
+                consistent with the documented policy threshold (Fixture Mode: {fixtureMode === 'corrected' ? 'Mode B Corrected' : 'Mode A'}).
+              </p>
+              <div className="sampling-disclaimer">
+                Finite sampling disclosure: Consistency is established strictly across tested boundary samples and probes; does not imply continuous interval proof.
+              </div>
+            </div>
+          )}
+
+          {status === 'CANCELLED_PARTIAL' && (
+            <div className="verdict-banner callout callout-warning" role="status">
+              <div className="verdict-header">
+                <div className="verdict-headline">
+                  Verification Cancelled: {completedCount} of {summaryCounts.totalScheduled} cases executed.
+                </div>
+                <span className="badge badge-neutral">Partial Run</span>
+              </div>
+              <p className="verdict-detail">
+                <strong>Verification Run Cancelled by User: </strong>
+                Execution was stopped mid-flight. Completed cases have been preserved as evidentiary snapshots; unattempted cases are marked NOT_EXECUTED.
+              </p>
+            </div>
+          )}
+
+          {status === 'COMPLETED_WITH_UNCERTAINTY' && (
+            <div className="verdict-banner callout callout-warning" role="status">
+              <div className="verdict-header">
+                <div className="verdict-headline">
+                  Verification Completed with Uncertainty: {summaryCounts.inconclusive} inconclusive case(s).
+                </div>
+                <span className="badge badge-inconclusive">Inconclusive</span>
+              </div>
+              <p className="verdict-detail">
+                <strong>Verification Completed with Uncertainty: </strong>
+                No confirmed mismatches were observed, but {summaryCounts.inconclusive} test case(s) yielded inconclusive form responses or errors.
+              </p>
+            </div>
+          )}
+
+          {status === 'FAILED' && (
+            <div className="verdict-banner callout callout-danger" role="alert">
+              <div className="verdict-header">
+                <div className="verdict-headline">Run Execution Interrupted</div>
+                <span className="badge badge-error">Failed</span>
+              </div>
+              <p className="verdict-detail">
+                <strong>Run Execution Interrupted: </strong>
+                The verification run failed or was interrupted by a system restart.
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -64,56 +152,6 @@ export const SummaryBar: React.FC<SummaryBarProps> = ({ snapshot, isRunning }) =
           </span>
         </div>
       </div>
-
-      {/* Terminal Status & Discrepancy Language Callout */}
-      {!isRunning && status !== 'RUNNING' && status !== 'CANCELLATION_REQUESTED' && (
-        <div>
-          {status === 'COMPLETED_MISMATCHES' && sampledMismatchSummary && (
-            <div className="callout callout-danger" role="alert">
-              <strong>Confirmed Policy Mismatches Detected: </strong>
-              The form rejected inputs that the documented policy explicitly allows.
-              Discrepancies were confirmed at tested values between{' '}
-              <span className="mono">₹{sampledMismatchSummary.lowestMismatchValue?.toLocaleString('en-IN')}</span> and{' '}
-              <span className="mono">₹{sampledMismatchSummary.highestMismatchValue?.toLocaleString('en-IN')}</span>.
-              <p style={{ marginTop: 4, fontSize: '0.78rem', color: '#7f1d1d' }}>
-                {sampledMismatchSummary.disclaimer}
-              </p>
-            </div>
-          )}
-
-          {status === 'COMPLETED_CONSISTENT' && (
-            <div className="callout callout-success" role="status">
-              <strong>Form Validated Consistent Across Tested Values: </strong>
-              All {summaryCounts.totalScheduled} executed boundary test cases produced validation outcomes
-              consistent with the documented policy threshold (Fixture Mode: {fixtureMode === 'corrected' ? 'Mode B Corrected' : 'Mode A'}).
-              <p style={{ marginTop: 4, fontSize: '0.78rem', color: '#064e3b' }}>
-                Note: Consistency is established strictly across tested boundary samples and probes.
-              </p>
-            </div>
-          )}
-
-          {status === 'CANCELLED_PARTIAL' && (
-            <div className="callout callout-warning" role="status">
-              <strong>Verification Run Cancelled by User: </strong>
-              Execution was stopped mid-flight. Completed cases have been preserved as evidentiary snapshots; unattempted cases are marked NOT_EXECUTED.
-            </div>
-          )}
-
-          {status === 'COMPLETED_WITH_UNCERTAINTY' && (
-            <div className="callout callout-warning" role="status">
-              <strong>Verification Completed with Uncertainty: </strong>
-              No confirmed mismatches were observed, but {summaryCounts.inconclusive} test case(s) yielded inconclusive form responses or errors.
-            </div>
-          )}
-
-          {status === 'FAILED' && (
-            <div className="callout callout-danger" role="alert">
-              <strong>Run Execution Interrupted: </strong>
-              The verification run failed or was interrupted by a system restart.
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 };
