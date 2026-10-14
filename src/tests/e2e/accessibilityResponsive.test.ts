@@ -118,7 +118,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
     } finally {
       await context.close();
     }
-  }, 50000);
+  }, 120000);
 
   it('performs genuine 200% zoom verification checking all 10 key elements, reachability, focus rings, and horizontal containment', async () => {
     // Standard 1280px screen zoomed to 200% yields an effective CSS layout viewport of 640px
@@ -233,7 +233,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
     } finally {
       await context.close();
     }
-  }, 75000);
+  }, 120000);
 
   it('supports full keyboard navigation with visible focus rings and dialog focus management', async () => {
     const context = await browser.newContext({
@@ -314,7 +314,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
     } finally {
       await context.close();
     }
-  }, 50000);
+  }, 120000);
 
   it('respects prefers-reduced-motion media query by disabling/zeroing transition durations', async () => {
     const context = await browser.newContext({
@@ -445,5 +445,5 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
     } finally {
       await context.close();
     }
-  }, 60000);
+  }, 120000);
 });

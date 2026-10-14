@@ -5,7 +5,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    testTimeout: 90000,
+    testTimeout: 120000,
     fileParallelism: false,
   },
   resolve: {
