@@ -74,7 +74,7 @@ Build mode: fast
 - [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
 - [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: Focused architectural takeaway connecting the user's Desired Learning Outcome (deterministic boundary generation vs black-box Playwright observation) to the 3-state classification matrix and empirical run history.
+Activity and evidence: Focused architectural takeaway connecting the user's Desired Learning Outcome (deterministic boundary generation vs black-box Playwright observation) to the four-state classification matrix (Consistent, Confirmed Mismatch, Inconclusive, Execution Error) and empirical run history.
 Route and stops: Stop 1: src/shared/ruleEngine.ts (generateBoundaryTestCases), Stop 2: src/server/runner/formObserver.ts (observeFormSubmission), Stop 3: src/server/report/reportGenerator.ts (generateHtmlEvidenceReport).
 Edit outcome: Not applicable (implementation frozen upon approval of final synchronization fixes).
 Reflection: Offered in chat prompt for learner's own reflection; learner requested: "including any required personal reflection questions. Do not invent my answers."

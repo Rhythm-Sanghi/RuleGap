@@ -287,7 +287,7 @@
         <h3>Stop 1: Rule Engine & Boundary Derivation</h3>
         <p class="file-path">src/shared/ruleEngine.ts <span class="anchor">-> generateBoundaryTestCases</span></p>
         <p>
-          Generates exact boundary probe integers (e.g. <code>[threshold - 1, threshold, threshold + 1]</code>) and tags each case with an unequivocal mathematical expectation (<code>ACCEPT</code> or <code>REJECT</code>). This ensures test generation is deterministic and decoupled from browser automation.
+          Generates exact boundary probe integers around the rule threshold according to the relational operator (e.g., for <code>income &lt;= 300,000 INR</code>: <code>threshold - 1</code> [299,999] evaluates to <code>ACCEPT</code>, <code>threshold</code> [300,000] evaluates to <code>ACCEPT</code>, and <code>threshold + 1</code> [300,001] evaluates to <code>REJECT</code>). This ensures test generation is deterministic and mathematically calibrated to the operator before any browser interaction begins.
         </p>
       </div>
 
@@ -300,7 +300,7 @@
       </div>
 
       <div class="route-step">
-        <h3>Stop 3: Discrepancy Classification & Offline Evidence Export</h3>
+        <h3>Stop 3: Discrepancy Classification &amp; Offline Evidence Export</h3>
         <p class="file-path">src/server/report/reportGenerator.ts <span class="anchor">-> generateHtmlEvidenceReport</span></p>
         <p>
           Binds the expected policy outcome against the observed form response. If the policy says <code>ACCEPT</code> but the form yields <code>REJECTED</code>, it marks a <code>CONFIRMED_MISMATCH</code>. It packages the entire run into a self-contained, single-file HTML report with embedded base64 screenshots and discrete sampling disclaimers.
@@ -340,15 +340,19 @@
 
     <!-- 4. Reusable Practice -->
     <section class="panel">
-      <h2>4. A Practice to Reuse: Three-State Verification Invariants</h2>
+      <h2>4. A Practice to Reuse: Four-State Classification Invariants</h2>
       <div class="practice-callout">
         <div class="practice-title">Decoupling Policy Expectations from Form Observations</div>
         <p style="margin-bottom: 8px;">
-          A common pitfall in automated compliance testing is treating any form failure as a rule discrepancy. If a form fails to submit due to a network glitch, missing selector, or unrelated required field, classifying that as a "Policy Bug" produces false alarms and erodes developer trust.
+          A common pitfall in automated compliance testing is treating any form failure as a rule discrepancy. If a form fails to submit due to a network glitch, missing DOM selector, or unrelated required field, classifying that as a "Policy Bug" produces false alarms and erodes developer trust.
         </p>
         <p style="margin-bottom: 0;">
-          <strong>The Reusable Pattern:</strong> Model your verification engine with explicit separation:
-          <code>Policy Expectation (ACCEPT | REJECT)</code> vs <code>Observed Form Outcome (ACCEPTED | REJECTED | INCONCLUSIVE)</code>. Only when <code>Expectation === ACCEPT</code> and <code>Observed === REJECTED</code> is a <code>CONFIRMED_MISMATCH</code> emitted. Unrelated errors settle safely as <code>INCONCLUSIVE</code> or <code>EXECUTION_ERROR</code>, preserving evidentiary credibility.
+          <strong>The Reusable Pattern:</strong> Model your verification engine with explicit four-state classification:
+          compare independent <code>Policy Expectation (ACCEPT | REJECT)</code> against the <code>Observed Form Outcome (ACCEPTED | REJECTED | INCONCLUSIVE)</code>:
+          <br />• <strong>Consistent</strong>: Observable form behavior matches policy expectation (<code>ACCEPT</code> matches <code>ACCEPTED</code>, or <code>REJECT</code> matches <code>REJECTED</code>).
+          <br />• <strong>Confirmed Mismatch</strong>: Form rejects an eligible applicant (<code>ACCEPT</code> vs <code>REJECTED</code>) or accepts an ineligible applicant (<code>REJECT</code> vs <code>ACCEPTED</code>).
+          <br />• <strong>Inconclusive</strong>: Form exhibits ambiguous feedback or unrelated field failures.
+          <br />• <strong>Execution Error</strong>: Target selector or submission element is unfindable in the DOM.
         </p>
       </div>
     </section>
