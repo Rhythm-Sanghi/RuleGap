@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Devpost learn personal context
+/devpost/learner-profile.md
+
+# Local credential files (allow .env.example)
+.env
+.env.*
+!.env.example
+
+# Build output
+dist/
+build/
+coverage/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
