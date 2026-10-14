@@ -17,12 +17,16 @@ export function useVerificationRun() {
 
   const eventSourceRef = useRef<EventSource | null>(null);
 
-  const fetchRunHistory = useCallback(async () => {
+  const fetchRunHistory = useCallback(async (autoSelectLatest = false) => {
     try {
       const res = await fetch('/api/runs');
       if (res.ok) {
         const body = await res.json();
-        setHistoricalRuns(body.runs || []);
+        const runs: VerificationRunSnapshot[] = body.runs || [];
+        setHistoricalRuns(runs);
+        if (autoSelectLatest && runs.length > 0) {
+          setSelectedRunSnapshot((prev) => prev ?? runs[0]);
+        }
       }
     } catch (err) {
       console.warn('Failed to load run history:', err);
@@ -30,7 +34,7 @@ export function useVerificationRun() {
   }, []);
 
   useEffect(() => {
-    fetchRunHistory();
+    fetchRunHistory(true);
     return () => {
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -157,6 +161,10 @@ export function useVerificationRun() {
           const finalSnapshot: VerificationRunSnapshot = JSON.parse(event.data);
           setActiveRunSnapshot(finalSnapshot);
           setSelectedRunSnapshot(finalSnapshot);
+          setHistoricalRuns((prev) => {
+            const filtered = prev.filter((r) => r.runId !== finalSnapshot.runId);
+            return [finalSnapshot, ...filtered];
+          });
           setIsRunning(false);
           sse.close();
           fetchRunHistory();
@@ -166,6 +174,10 @@ export function useVerificationRun() {
           const cancelledSnapshot: VerificationRunSnapshot = JSON.parse(event.data);
           setActiveRunSnapshot(cancelledSnapshot);
           setSelectedRunSnapshot(cancelledSnapshot);
+          setHistoricalRuns((prev) => {
+            const filtered = prev.filter((r) => r.runId !== cancelledSnapshot.runId);
+            return [cancelledSnapshot, ...filtered];
+          });
           setIsRunning(false);
           setIsCancelling(false);
           sse.close();
@@ -178,6 +190,10 @@ export function useVerificationRun() {
           if (snapshot) {
             setActiveRunSnapshot(snapshot);
             setSelectedRunSnapshot(snapshot);
+            setHistoricalRuns((prev) => {
+              const filtered = prev.filter((r) => r.runId !== snapshot.runId);
+              return [snapshot, ...filtered];
+            });
           }
           setIsRunning(false);
           sse.close();
@@ -192,6 +208,10 @@ export function useVerificationRun() {
               if (data && data.status !== 'RUNNING') {
                 setActiveRunSnapshot(data);
                 setSelectedRunSnapshot(data);
+                setHistoricalRuns((prev) => {
+                  const filtered = prev.filter((r) => r.runId !== data.runId);
+                  return [data, ...filtered];
+                });
                 setIsRunning(false);
                 sse.close();
                 fetchRunHistory();

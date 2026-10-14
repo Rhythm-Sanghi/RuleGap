@@ -163,6 +163,8 @@ export const App: React.FC = () => {
               selectedRunId={selectedRunSnapshot?.runId || null}
               onSelectRun={selectRun}
               disabled={isRunning}
+              isRunning={isRunning}
+              activeRunId={activeRunSnapshot?.runId || null}
             />
           </div>
         </div>

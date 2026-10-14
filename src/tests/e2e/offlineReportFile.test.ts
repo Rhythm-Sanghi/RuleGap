@@ -73,7 +73,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
         const runRes = await fetch(`http://127.0.0.1:${serverPort}/api/runs/${runId}`);
         if (runRes.status === 200) {
           const snap = await runRes.json();
-          if (snap.status === 'COMPLETED_MISMATCHES' || snap.status === 'COMPLETED_CONSISTENT') {
+          if (snap.status && snap.status !== 'RUNNING' && snap.status !== 'QUEUED') {
             completedRun = snap;
             break;
           }

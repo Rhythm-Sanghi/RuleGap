@@ -1,9 +1,7 @@
-import http from 'http';
 import path from 'path';
 import fs from 'fs';
+import { spawn, ChildProcess } from 'child_process';
 import { chromium } from 'playwright';
-import { createApp } from '../src/server/server.js';
-import { browserPool } from '../src/server/runner/browserPool.js';
 
 async function main() {
   const screenshotsDir = path.resolve(process.cwd(), 'devpost/screenshots');
@@ -11,16 +9,40 @@ async function main() {
     fs.mkdirSync(screenshotsDir, { recursive: true });
   }
 
-  const app = createApp();
-  let server: http.Server;
-  let serverPort = 3000;
+  const visualsDataDir = path.resolve(process.cwd(), '.rulegap-visuals');
+  if (fs.existsSync(visualsDataDir)) {
+    fs.rmSync(visualsDataDir, { recursive: true, force: true });
+  }
 
-  await new Promise<void>((resolve) => {
-    server = app.listen(0, '127.0.0.1', () => {
-      const addr = server.address();
-      serverPort = typeof addr === 'object' && addr ? addr.port : 3000;
-      resolve();
+  const serverPort = 3058;
+
+  const serverProc: ChildProcess = await new Promise((resolve, reject) => {
+    const proc = spawn('npx', ['tsx', 'src/server/server.ts'], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        PORT: String(serverPort),
+        RULEGAP_DATA_DIR: '.rulegap-visuals',
+      },
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: true,
     });
+
+    let stdout = '';
+    const onData = (data: Buffer) => {
+      stdout += data.toString();
+      if (stdout.includes(`Running on http://127.0.0.1:${serverPort}`)) {
+        proc.stdout?.off('data', onData);
+        resolve(proc);
+      }
+    };
+
+    proc.stdout?.on('data', onData);
+    proc.on('error', reject);
+
+    setTimeout(() => {
+      reject(new Error(`Server failed to start within 12s: ${stdout}`));
+    }, 12000);
   });
 
   const browser = await chromium.launch({ headless: true });
@@ -32,7 +54,7 @@ async function main() {
   async function takeCleanFullScreenshot(filePath: string) {
     // Scroll to top first
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(100);
+    await page.waitForTimeout(150);
     const scrollHeight = await page.evaluate(() =>
       Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 900)
     );
@@ -40,6 +62,18 @@ async function main() {
     await page.screenshot({ path: filePath });
     // Reset standard viewport
     await page.setViewportSize({ width: 1440, height: 900 });
+  }
+
+  function killProcess(proc: ChildProcess): Promise<void> {
+    return new Promise((resolve) => {
+      if (!proc.pid) return resolve();
+      if (process.platform === 'win32') {
+        spawn('taskkill', ['/pid', String(proc.pid), '/f', '/t']).on('close', () => resolve());
+      } else {
+        proc.kill('SIGKILL');
+        resolve();
+      }
+    });
   }
 
   try {
@@ -63,16 +97,16 @@ async function main() {
     // 3. Four-mismatch result (Mode A verification)
     await page.locator('button:has-text("Start Browser Verification Run")').click();
     await page.waitForSelector('.callout-danger', { timeout: 35000 });
+    // Wait for history-select to update
+    await page.waitForSelector('#history-select');
     await takeCleanFullScreenshot(path.join(screenshotsDir, '03-four-mismatch-result.png'));
     console.log('Saved 03-four-mismatch-result.png');
 
     // 4. Evidence drawer open
-    // Scroll to evidence matrix to click Inspect
     await page.locator('.workbench-results-section').scrollIntoViewIfNeeded();
     const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
     await inspectBtn.click();
     await page.waitForSelector('.drawer', { state: 'visible' });
-    // Wait for screenshot inside drawer to load
     await page.waitForSelector('.screenshot-preview');
     await page.screenshot({ path: path.join(screenshotsDir, '04-evidence-drawer.png') });
     console.log('Saved 04-evidence-drawer.png');
@@ -86,13 +120,20 @@ async function main() {
     await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
     await page.locator('button:has-text("Start Browser Verification Run")').click();
     await page.waitForSelector('.callout-success', { timeout: 35000 });
+    // Wait for history-select to have 2 options
+    await page.waitForFunction(() => {
+      const select = document.querySelector('#history-select') as HTMLSelectElement | null;
+      return select && select.options.length === 2;
+    });
     await takeCleanFullScreenshot(path.join(screenshotsDir, '05-corrected-consistent-result.png'));
     console.log('Saved 05-corrected-consistent-result.png');
 
   } finally {
     await browser.close().catch(() => {});
-    await browserPool.close();
-    server.close();
+    await killProcess(serverProc);
+    if (fs.existsSync(visualsDataDir)) {
+      fs.rmSync(visualsDataDir, { recursive: true, force: true });
+    }
   }
 }
 
