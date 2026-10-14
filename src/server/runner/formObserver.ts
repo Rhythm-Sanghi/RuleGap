@@ -132,14 +132,12 @@ export async function observeFormSubmission(
 
     classification = compareOutcomes(expectedOutcome, observedOutcome);
 
-    // Capture screenshot if there is a mismatch or inconclusive/error outcome
-    if (classification === 'CONFIRMED_MISMATCH' || classification === 'INCONCLUSIVE') {
-      try {
-        const screenshotBuffer = await page.screenshot({ fullPage: false });
-        screenshotId = await evidenceStore.saveScreenshot(runId, caseId, screenshotBuffer);
-      } catch (err: unknown) {
-        diagnosticDetails = (diagnosticDetails ? diagnosticDetails + '; ' : '') + `Screenshot failed: ${String(err)}`;
-      }
+    // Capture screenshot evidence for all completed form submissions
+    try {
+      const screenshotBuffer = await page.screenshot({ fullPage: false });
+      screenshotId = await evidenceStore.saveScreenshot(runId, caseId, screenshotBuffer);
+    } catch (err: unknown) {
+      diagnosticDetails = (diagnosticDetails ? diagnosticDetails + '; ' : '') + `Screenshot failed: ${String(err)}`;
     }
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
