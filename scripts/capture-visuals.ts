@@ -29,11 +29,24 @@ async function main() {
   });
   const page = await context.newPage();
 
+  async function takeCleanFullScreenshot(filePath: string) {
+    // Scroll to top first
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(100);
+    const scrollHeight = await page.evaluate(() =>
+      Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 900)
+    );
+    await page.setViewportSize({ width: 1440, height: scrollHeight });
+    await page.screenshot({ path: filePath });
+    // Reset standard viewport
+    await page.setViewportSize({ width: 1440, height: 900 });
+  }
+
   try {
     // 1. Empty workbench
     await page.goto(`http://127.0.0.1:${serverPort}`);
     await page.waitForSelector('.app-header');
-    await page.screenshot({ path: path.join(screenshotsDir, '01-empty-workbench.png'), fullPage: true });
+    await takeCleanFullScreenshot(path.join(screenshotsDir, '01-empty-workbench.png'));
     console.log('Saved 01-empty-workbench.png');
 
     // 2. Load policy & confirm contract -> Pre-flight plan derived
@@ -44,18 +57,18 @@ async function main() {
     // Approve test plan
     await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
     await page.waitForSelector('.badge:has-text("Plan Approved")');
-    await page.screenshot({ path: path.join(screenshotsDir, '02-approved-test-plan.png'), fullPage: true });
+    await takeCleanFullScreenshot(path.join(screenshotsDir, '02-approved-test-plan.png'));
     console.log('Saved 02-approved-test-plan.png');
 
     // 3. Four-mismatch result (Mode A verification)
     await page.locator('button:has-text("Start Browser Verification Run")').click();
     await page.waitForSelector('.callout-danger', { timeout: 35000 });
-    // Scroll down to show results section cleanly
-    await page.locator('.workbench-results-section').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(screenshotsDir, '03-four-mismatch-result.png'), fullPage: true });
+    await takeCleanFullScreenshot(path.join(screenshotsDir, '03-four-mismatch-result.png'));
     console.log('Saved 03-four-mismatch-result.png');
 
     // 4. Evidence drawer open
+    // Scroll to evidence matrix to click Inspect
+    await page.locator('.workbench-results-section').scrollIntoViewIfNeeded();
     const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
     await inspectBtn.click();
     await page.waitForSelector('.drawer', { state: 'visible' });
@@ -73,8 +86,7 @@ async function main() {
     await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
     await page.locator('button:has-text("Start Browser Verification Run")').click();
     await page.waitForSelector('.callout-success', { timeout: 35000 });
-    await page.locator('.workbench-results-section').scrollIntoViewIfNeeded();
-    await page.screenshot({ path: path.join(screenshotsDir, '05-corrected-consistent-result.png'), fullPage: true });
+    await takeCleanFullScreenshot(path.join(screenshotsDir, '05-corrected-consistent-result.png'));
     console.log('Saved 05-corrected-consistent-result.png');
 
   } finally {

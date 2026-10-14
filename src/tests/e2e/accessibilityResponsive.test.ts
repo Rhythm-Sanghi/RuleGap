@@ -361,4 +361,89 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await context.close();
     }
   });
+
+  it('verifies full-size screenshot viewer dialog semantics, focus containment, Escape dismissal, and focus restoration to drawer', async () => {
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 800 },
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.goto(`http://127.0.0.1:${serverPort}`);
+      await page.waitForSelector('.app-header');
+
+      // Load sample, confirm, approve and run Mode A
+      await page.locator('button:has-text("Load Sample Policy")').click();
+      await page.locator('button:has-text("Confirm Rule Contract & Derive Plan")').click();
+      await page.waitForSelector('button:has-text("Approve Plan & Authorize Verification")');
+      await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
+      await page.locator('button:has-text("Start Browser Verification Run")').click();
+
+      // Wait for run completion
+      await page.waitForSelector('.callout-danger', { timeout: 35000 });
+
+      // Open drawer for Case 3 mismatch
+      const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
+      await inspectBtn.click();
+      await page.waitForSelector('.drawer', { state: 'visible' });
+
+      // Find "View Full Size ↗" button
+      const viewFullSizeBtn = page.locator('button:has-text("View Full Size ↗")');
+      await viewFullSizeBtn.waitFor({ state: 'visible' });
+
+      // Activate View Full Size
+      await viewFullSizeBtn.click();
+
+      // Verify full-size modal appears with proper ARIA attributes
+      await page.waitForSelector('.fullsize-modal', { state: 'visible' });
+      const modal = page.locator('.fullsize-modal');
+      expect(await modal.getAttribute('role')).toBe('dialog');
+      expect(await modal.getAttribute('aria-modal')).toBe('true');
+      expect(await modal.getAttribute('aria-labelledby')).toBe('fullsize-modal-title');
+
+      // Verify focus is automatically moved to fullsize close button
+      await page.waitForFunction(() => {
+        const active = document.activeElement;
+        return active?.getAttribute('aria-label') === 'Close full size screenshot modal';
+      }, { timeout: 5000 });
+
+      // Verify Tab containment inside fullsize modal
+      await page.keyboard.press('Tab');
+      let isInsideFullsize = await page.evaluate(() => {
+        const m = document.querySelector('.fullsize-modal');
+        return m ? m.contains(document.activeElement) : false;
+      });
+      expect(isInsideFullsize).toBe(true);
+
+      // Verify Shift+Tab containment
+      await page.keyboard.down('Shift');
+      await page.keyboard.press('Tab');
+      await page.keyboard.up('Shift');
+      isInsideFullsize = await page.evaluate(() => {
+        const m = document.querySelector('.fullsize-modal');
+        return m ? m.contains(document.activeElement) : false;
+      });
+      expect(isInsideFullsize).toBe(true);
+
+      // Verify Escape dismisses full-size modal and restores focus to "View Full Size ↗" button
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.fullsize-modal', { state: 'detached' });
+
+      // Verify drawer remains open
+      expect(await page.locator('.drawer').isVisible()).toBe(true);
+
+      // Verify focus was restored to "View Full Size ↗" button
+      const restoredFocusedText = await page.evaluate(() => document.activeElement?.textContent);
+      expect(restoredFocusedText).toContain('View Full Size');
+
+      // Verify second Escape dismisses drawer and restores focus to Inspect button
+      await page.keyboard.press('Escape');
+      await page.waitForSelector('.drawer', { state: 'detached' });
+      const restoredToTableText = await page.evaluate(() => document.activeElement?.textContent);
+      expect(restoredToTableText).toContain('Inspect');
+    } finally {
+      await context.close();
+    }
+  }, 60000);
 });

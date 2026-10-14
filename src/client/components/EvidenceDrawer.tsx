@@ -19,6 +19,17 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
 
   const [isFullSizeOpen, setIsFullSizeOpen] = useState<boolean>(false);
   const [zoomLevel, setZoomLevel] = useState<'fit' | '100%' | '150%'>('fit');
+  const fullSizeTriggerRef = useRef<HTMLElement | null>(null);
+
+  const openFullSize = (e?: React.MouseEvent) => {
+    fullSizeTriggerRef.current = (e?.currentTarget as HTMLElement) || (document.activeElement as HTMLElement);
+    setZoomLevel('fit');
+    setIsFullSizeOpen(true);
+  };
+
+  const closeFullSize = () => {
+    setIsFullSizeOpen(false);
+  };
 
   useEffect(() => {
     previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
@@ -33,11 +44,23 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
   }, []);
 
   useEffect(() => {
+    if (isFullSizeOpen) {
+      const timer = setTimeout(() => {
+        fullSizeCloseBtnRef.current?.focus();
+      }, 20);
+      return () => clearTimeout(timer);
+    } else if (fullSizeTriggerRef.current) {
+      fullSizeTriggerRef.current.focus();
+      fullSizeTriggerRef.current = null;
+    }
+  }, [isFullSizeOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
         if (isFullSizeOpen) {
-          setIsFullSizeOpen(false);
+          closeFullSize();
         } else {
           onClose();
         }
@@ -243,10 +266,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                     type="button"
                     className="btn btn-secondary"
                     style={{ minHeight: 28, padding: '2px 10px', fontSize: '0.75rem' }}
-                    onClick={() => {
-                      setZoomLevel('fit');
-                      setIsFullSizeOpen(true);
-                    }}
+                    onClick={openFullSize}
                     aria-label="View screenshot full size"
                   >
                     View Full Size ↗
@@ -261,10 +281,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                     alt={`Browser validation observation for income ₹${observation.value}`}
                     className="screenshot-preview"
                     style={{ cursor: 'pointer' }}
-                    onClick={() => {
-                      setZoomLevel('fit');
-                      setIsFullSizeOpen(true);
-                    }}
+                    onClick={openFullSize}
                     title="Click to enlarge screenshot"
                   />
                   <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>
@@ -339,13 +356,14 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
         <div
           className="drawer-backdrop"
           style={{ zIndex: 60, alignItems: 'center', justifyContent: 'center', padding: 24 }}
-          onClick={() => setIsFullSizeOpen(false)}
+          onClick={closeFullSize}
         >
           <div
             className="fullsize-modal"
             role="dialog"
             aria-modal="true"
-            aria-label="Full size screenshot evidence"
+            aria-labelledby="fullsize-modal-title"
+            tabIndex={-1}
             onClick={(e) => e.stopPropagation()}
             style={{
               backgroundColor: 'var(--bg-surface)',
@@ -370,9 +388,9 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                <h4 id="fullsize-modal-title" style={{ fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>
                   Viewport Capture — Case {caseIndex} (₹{observation.value.toLocaleString('en-IN')})
-                </span>
+                </h4>
                 <span className="badge badge-neutral mono" style={{ fontSize: '0.75rem' }}>
                   {snapshot.fixtureMode === 'inconsistent' ? 'Mode A (₹2,50,000 threshold)' : 'Mode B (₹3,00,000 threshold)'}
                 </span>
@@ -410,7 +428,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                   type="button"
                   className="btn btn-secondary"
                   style={{ minHeight: 28, padding: '2px 10px', fontSize: '0.8rem' }}
-                  onClick={() => setIsFullSizeOpen(false)}
+                  onClick={closeFullSize}
                   aria-label="Close full size screenshot modal"
                 >
                   ✕
