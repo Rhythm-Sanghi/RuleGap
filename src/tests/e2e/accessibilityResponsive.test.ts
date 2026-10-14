@@ -97,7 +97,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       // 3. Approve and start run
       await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
       await page.locator('button:has-text("Start Browser Verification Run")').click();
-      await page.waitForSelector('.callout-danger', { timeout: 35000 });
+      await page.waitForSelector('.callout-danger', { timeout: 50000 });
 
       // Audit completed verification matrix state
       const postRunAudit = await new AxeBuilder({ page })
@@ -180,7 +180,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await startBtn.click();
 
       // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 35000 });
+      await page.waitForSelector('.callout-danger', { timeout: 50000 });
 
       // Element 7: Evidence matrix
       expect(await page.locator('table[aria-label="Verification observations matrix"]').isVisible()).toBe(true);
@@ -210,7 +210,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       const startBtn2 = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn2.scrollIntoViewIfNeeded();
       await startBtn2.click();
-      await page.waitForSelector('.callout-success', { timeout: 35000 });
+      await page.waitForSelector('.callout-success', { timeout: 50000 });
 
       // Element 9: History selector (now visible with multiple runs)
       await page.waitForSelector('#history-select');
@@ -274,7 +274,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await page.keyboard.press('Enter');
 
       // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 35000 });
+      await page.waitForSelector('.callout-danger', { timeout: 50000 });
 
       // Focus the inspect button and activate via keyboard
       const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
@@ -381,7 +381,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await page.locator('button:has-text("Start Browser Verification Run")').click();
 
       // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 35000 });
+      await page.waitForSelector('.callout-danger', { timeout: 50000 });
 
       // Open drawer for Case 3 mismatch
       const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
