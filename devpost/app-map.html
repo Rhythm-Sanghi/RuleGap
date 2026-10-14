@@ -313,27 +313,27 @@
       <h2>3. "To Change This, Start Here" Extension Pointers</h2>
       <div class="grid-pointers">
         <div class="pointer-card">
-          <div class="pointer-title">Add New Relational Operators</div>
+          <div class="pointer-title">Compound Rules &amp; Multiple Fields</div>
           <div class="pointer-loc">src/shared/contract.ts &amp; ruleEngine.ts</div>
-          <p class="pointer-desc">Extend <code>OperatorSchema</code> (e.g., adding <code>&gt;</code>, <code>&gt;=</code>, <code>&lt;</code>, <code>=</code>) and update boundary derivation rules in <code>generateBoundaryTestCases</code>.</p>
+          <p class="pointer-desc">Extend schemas to model multi-field compound requirements (e.g., household income cap combined with minimum GPA) and multi-variable combinatorial boundary generation.</p>
         </div>
 
         <div class="pointer-card">
-          <div class="pointer-title">Support a New Form Interface</div>
-          <div class="pointer-loc">src/server/routes/fixtures.ts &amp; sampleData.ts</div>
-          <p class="pointer-desc">Add a new fixture interface route or configure custom target field selectors, submit buttons, and container endpoints.</p>
+          <div class="pointer-title">Additional Authorized Form Adapters</div>
+          <div class="pointer-loc">src/server/routes/fixtures.ts &amp; formObserver.ts</div>
+          <p class="pointer-desc">Add new local or staging fixture adapters with custom field selectors, submit actions, and domain-specific feedback containers.</p>
         </div>
 
         <div class="pointer-card">
-          <div class="pointer-title">Customize Report Styling or Formatting</div>
-          <div class="pointer-loc">src/server/report/reportTemplate.ts</div>
-          <p class="pointer-desc">Adjust the inline CSS styling, sampling disclosure banners, or table layout of the standalone offline evidence report.</p>
+          <div class="pointer-title">Non-Numeric &amp; Categorical Constraints</div>
+          <div class="pointer-loc">src/shared/contract.ts &amp; ruleEngine.ts</div>
+          <p class="pointer-desc">Introduce categorical qualification rules (e.g. state residency, enrollment status) with discrete equivalence partitioning alongside numeric boundaries.</p>
         </div>
 
         <div class="pointer-card">
-          <div class="pointer-title">Configure Multi-Browser Verification</div>
-          <div class="pointer-loc">src/server/runner/browserPool.ts</div>
-          <p class="pointer-desc">Extend the Playwright pool to launch Firefox or WebKit instances alongside Chromium for cross-browser consistency verification.</p>
+          <div class="pointer-title">CI / Automated Regression Pipeline</div>
+          <div class="pointer-loc">src/tests/ &amp; package.json</div>
+          <p class="pointer-desc">Package the headless Playwright runner as a command-line CI verification step that fails pull requests when web forms drift from policy contracts.</p>
         </div>
       </div>
     </section>
