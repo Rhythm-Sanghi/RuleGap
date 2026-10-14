@@ -20,8 +20,10 @@ export function createApp(): express.Application {
 
   // Capture active server port for hermetic test execution
   app.use((req, _res, next) => {
-    if (req.socket.localPort) {
-      req.app.set('serverPort', req.socket.localPort);
+    const hostPort = req.headers.host?.includes(':') ? Number(req.headers.host.split(':')[1]) : null;
+    const port = hostPort || req.socket.localPort;
+    if (port && !isNaN(port)) {
+      req.app.set('serverPort', port);
     }
     next();
   });
