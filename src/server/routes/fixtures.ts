@@ -221,7 +221,7 @@ fixturesRouter.get('/fixtures/scholarship', (req: Request, res: Response) => {
         feedbackArea.innerHTML = '<div data-testid="field-error" id="income-error" role="alert">Annual family income exceeds eligible limit of ₹' + FORM_THRESHOLD.toLocaleString('en-IN') + ' for this grant program.</div>';
       } else {
         feedbackArea.className = 'feedback success';
-        feedbackArea.innerHTML = '<div data-testid="status-accepted" id="status-accepted" role="status">Application successfully received for processing. Reference ID: SCH-2026-OK.</div>';
+        feedbackArea.innerHTML = '<div data-testid="status-accepted" id="status-accepted" role="status">Synthetic demonstration submission accepted. Form restriction satisfied. No actual application data is stored.</div>';
       }
     });
   </script>

@@ -3,28 +3,32 @@ import http from 'http';
 import path from 'path';
 import fs from 'fs';
 import { SERVER_CONFIG } from './config.js';
+import { hostHeaderValidation, csrfProtection } from './middleware/security.js';
 import { fixturesRouter } from './routes/fixtures.js';
+import { plansRouter } from './routes/plans.js';
+import { runsRouter } from './routes/runs.js';
+import { runStore } from './storage/runStore.js';
 import { browserPool } from './runner/browserPool.js';
 
 export function createApp(): express.Application {
   const app = express();
 
-  // Basic security middleware: reject invalid host headers
-  app.use((req, res, next) => {
-    const host = req.headers.host;
-    const allowedHosts = [`127.0.0.1:${SERVER_CONFIG.port}`, `localhost:${SERVER_CONFIG.port}`];
-    if (host && !allowedHosts.includes(host) && !host.startsWith('127.0.0.1:') && !host.startsWith('localhost:')) {
-      return res.status(403).json({ error: 'Forbidden: untrusted Host header' });
-    }
-    next();
-  });
 
+  // Host header validation
+  app.use(hostHeaderValidation);
+
+  // Body parser
   app.use(express.json({ limit: '1mb' }));
 
-  // Mount fixture routes
-  app.use(fixturesRouter);
+  // Anti-CSRF on state-changing requests
+  app.use(csrfProtection);
 
-  // Serve client assets if built, or placeholder if in dev before full build
+  // API & Fixture Routers
+  app.use(fixturesRouter);
+  app.use(plansRouter);
+  app.use(runsRouter);
+
+  // Serve client assets if built
   const clientDist = path.resolve(process.cwd(), 'dist/client');
   if (fs.existsSync(clientDist)) {
     app.use(express.static(clientDist));
@@ -39,7 +43,14 @@ export function createApp(): express.Application {
   return app;
 }
 
-export function startServer(port: number = SERVER_CONFIG.port): Promise<http.Server> {
+export const createServer = createApp;
+
+export async function startServer(port: number = SERVER_CONFIG.port): Promise<http.Server> {
+  // Reconcile any abandoned active runs from previous crashes
+  await runStore.reconcileStartupCrashes().catch((err) => {
+    console.error('[RuleGap Server] Crash reconciliation error:', err);
+  });
+
   const app = createApp();
   const server = http.createServer(app);
 
@@ -58,7 +69,6 @@ process.on('SIGINT', async () => {
   process.exit(0);
 });
 
-// Run directly if invoked via node/tsx
 if (process.argv[1] && process.argv[1].endsWith('server.ts')) {
   startServer();
 }

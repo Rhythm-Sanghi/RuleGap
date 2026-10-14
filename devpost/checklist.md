@@ -9,7 +9,7 @@ Build mode: fast
 
 ## Slices
 
-- [ ] **1. Engineering Foundation, Shared Contract, and Deterministic Rule Engine**
+- [x] **1. Engineering Foundation, Shared Contract, and Deterministic Rule Engine**
   Becomes usable: A verified TypeScript core where numeric rule contracts (`<`, `<=`, `>`, `>=`) can be evaluated, boundary test cases deterministically generated with rationales and probe values, and contracts validated against Zod schemas.
   Why now: The rule engine and shared types form the backbone of the entire application. Bootstrapping dependencies and verifying calculation invariants early prevents downstream architecture refactors.
   PRD ref: `prd.md > Feature 2: Deterministic Rule Contract Confirmation`, `prd.md > Features and Behavior`
@@ -19,7 +19,7 @@ Build mode: fast
   Learner check: Inspect `src/shared/ruleEngine.ts` and verify that boundary generation for `income <= 300000` produces exact points `299999`, `300000`, and `300001` with expected outcomes `ACCEPT`, `ACCEPT`, and `REJECT`.
   Commit: `feat: add core rule engine, shared schemas, and boundary generator`
 
-- [ ] **2. Embedded Scholarship Fixture and Black-Box Playwright Observer**
+- [x] **2. Embedded Scholarship Fixture and Black-Box Playwright Observer**
   Becomes usable: A real, rendered scholarship application web form running on localhost (`/fixtures/scholarship`) with defect toggle (Mode A ₹250k vs Mode B ₹300k), and an independent Playwright browser runner that navigates, inputs values, triggers validation, and captures explicit DOM outcomes under route-restricted network isolation.
   Why now: Browser observation is the primary technical risk. Proving real black-box DOM observation and mismatch detection before building the UI ensures our verification claims are genuine.
   PRD ref: `prd.md > The Core Journey` (Step 5, 7, 8, 9), `prd.md > Feature 4: Independent Black-Box Browser Verification`
@@ -29,7 +29,7 @@ Build mode: fast
   Learner check: Open `http://127.0.0.1:3000/fixtures/scholarship?mode=inconsistent` in a browser, enter `275000`, click submit, and verify explicit error message; switch to `mode=corrected` and verify acceptance banner.
   Commit: `feat: implement embedded scholarship fixture and black-box playwright runner`
 
-- [ ] **3. Authoritative Plan Approval, Atomic Checkpointing, SSE Streaming, and Safe Cancellation**
+- [x] **3. Authoritative Plan Approval, Atomic Checkpointing, SSE Streaming, and Safe Cancellation**
   Becomes usable: A complete server verification lifecycle API where test plans must be explicitly server-approved, active runs write atomic filesystem checkpoints for crash recovery, progress streams in real time via SSE with reconnection replay, and cancellation safely cleans up Playwright browser processes without false mismatch classifications.
   Why now: The verification execution infrastructure guarantees evidentiary integrity, race-condition safety, and process recovery before wiring the frontend.
   PRD ref: `prd.md > Non-Happy-Path UI Behaviors` (Cancellation, Runner Unavailable), `prd.md > Product Decisions`
@@ -61,7 +61,7 @@ Build mode: fast
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — Slice 2 (Embedded scholarship fixture and real Playwright browser observation verified)
+- [x] Early usable behavior explored — Slice 2 (Embedded scholarship fixture and real Playwright browser observation verified)
 - [ ] Final kick-the-tires exploration and feedback completed
 
 ## Final Review
