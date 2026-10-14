@@ -133,3 +133,27 @@ runsRouter.get('/api/runs/:id/screenshots/:caseId', async (req: Request, res: Re
   res.setHeader('Cache-Control', 'public, max-age=86400');
   res.send(buffer);
 });
+
+// Standalone offline HTML report download
+runsRouter.get('/api/runs/:id/report', async (req: Request, res: Response) => {
+  try {
+    const run = await runStore.getRun(req.params.id);
+    if (!run) {
+      return res.status(404).json({ error: 'Run not found' });
+    }
+
+    const { generateHtmlEvidenceReport } = await import('../report/reportGenerator.js');
+    const html = await generateHtmlEvidenceReport(run);
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="rulegap-evidence-${run.runId.slice(0, 8)}.html"`
+    );
+    res.send(html);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: errorMsg });
+  }
+});
+

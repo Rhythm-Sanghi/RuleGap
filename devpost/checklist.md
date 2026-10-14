@@ -49,7 +49,7 @@ Build mode: fast
   Learner check: Open `http://127.0.0.1:3000`, load sample policy, confirm rule contract, review pre-flight plan, run verification against Mode A (observe 4 mismatches), toggle to Mode B, re-approve, and run (observe 7 consistent).
   Commit: `feat: build complete hybrid guided workbench interface and responsive components`
 
-- [ ] **5. Standalone Offline HTML Evidence Export and Comprehensive Reliability Verification**
+- [x] **5. Standalone Offline HTML Evidence Export and Comprehensive Reliability Verification**
   Becomes usable: A pure report generation engine producing a single-file, self-contained offline HTML evidence report with inline CSS and base64-embedded screenshots; plus verification of the entire 15-point acceptance test suite including security headers, escaping, crash recovery, and offline execution.
   Why now: The exportable evidence report is the definitive artifact proving policy discrepancies to stakeholders; running the full test suite confirms all invariants are satisfied.
   PRD ref: `prd.md > Feature 6: Standalone HTML Evidence Export`, `prd.md > Product Decisions`
