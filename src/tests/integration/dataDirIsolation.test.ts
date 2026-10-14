@@ -12,22 +12,24 @@ describe('RULEGAP_DATA_DIR Isolation and Restart Persistence', () => {
 
   function spawnServer(): Promise<{ proc: ChildProcess; url: string }> {
     return new Promise((resolve, reject) => {
-      const proc = spawn(
-        'npx',
-        ['tsx', 'src/server/server.ts'],
-        {
-          cwd: process.cwd(),
-          env: {
-            ...process.env,
-            PORT: String(testPort),
-            RULEGAP_DATA_DIR: '.rulegap-demo-isolated',
-          },
-          stdio: ['pipe', 'pipe', 'pipe'],
-          shell: true,
-        }
-      );
+      const serverDist = path.resolve(process.cwd(), 'dist/server/server/server.js');
+      const useDist = fs.existsSync(serverDist);
+      const cmd = useDist ? process.execPath : 'npx';
+      const args = useDist ? [serverDist] : ['tsx', 'src/server/server.ts'];
+
+      const proc = spawn(cmd, args, {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PORT: String(testPort),
+          RULEGAP_DATA_DIR: '.rulegap-demo-isolated',
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: !useDist,
+      });
 
       let stdout = '';
+      let stderr = '';
       const onData = (data: Buffer) => {
         const str = data.toString();
         stdout += str;
@@ -38,11 +40,12 @@ describe('RULEGAP_DATA_DIR Isolation and Restart Persistence', () => {
       };
 
       proc.stdout?.on('data', onData);
+      proc.stderr?.on('data', (d) => { stderr += d.toString(); });
       proc.on('error', reject);
 
       setTimeout(() => {
-        reject(new Error(`Server failed to start within 10s: ${stdout}`));
-      }, 10000);
+        reject(new Error(`Server failed to start within 25s: ${stdout} | ${stderr}`));
+      }, 25000);
     });
   }
 

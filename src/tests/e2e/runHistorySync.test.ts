@@ -12,7 +12,12 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
 
   function spawnServer(): Promise<{ proc: ChildProcess; url: string }> {
     return new Promise((resolve, reject) => {
-      const proc = spawn('npx', ['tsx', 'src/server/server.ts'], {
+      const serverDist = path.resolve(process.cwd(), 'dist/server/server/server.js');
+      const useDist = fs.existsSync(serverDist);
+      const cmd = useDist ? process.execPath : 'npx';
+      const args = useDist ? [serverDist] : ['tsx', 'src/server/server.ts'];
+
+      const proc = spawn(cmd, args, {
         cwd: process.cwd(),
         env: {
           ...process.env,
@@ -20,10 +25,11 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
           RULEGAP_DATA_DIR: '.rulegap-sync-test',
         },
         stdio: ['pipe', 'pipe', 'pipe'],
-        shell: true,
+        shell: !useDist,
       });
 
       let stdout = '';
+      let stderr = '';
       const onData = (data: Buffer) => {
         const str = data.toString();
         stdout += str;
@@ -35,11 +41,12 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       };
 
       proc.stdout?.on('data', onData);
+      proc.stderr?.on('data', (d) => { stderr += d.toString(); });
       proc.on('error', reject);
 
       setTimeout(() => {
-        reject(new Error(`Server failed to start within 12s: ${stdout}`));
-      }, 12000);
+        reject(new Error(`Server failed to start within 25s: ${stdout} | ${stderr}`));
+      }, 25000);
     });
   }
 
