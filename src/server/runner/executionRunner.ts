@@ -45,11 +45,12 @@ export class ExecutionRunner {
     // Initial handshake
     res.write(`event: connected\ndata: {"status":"connected"}\n\n`);
 
-    // Replay missed events from buffer if Last-Event-ID is provided
-    if (lastEventId !== undefined && this.eventBuffers.has(runId)) {
+    // Replay missed events from buffer (from effectiveLastEventId onwards)
+    const minSeq = lastEventId !== undefined ? lastEventId : 0;
+    if (this.eventBuffers.has(runId)) {
       const buffer = this.eventBuffers.get(runId)!;
       for (const ev of buffer) {
-        if (ev.seq > lastEventId) {
+        if (ev.seq > minSeq) {
           res.write(`id: ${ev.seq}\nevent: ${ev.type}\ndata: ${JSON.stringify(ev.data)}\n\n`);
         }
       }
