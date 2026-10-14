@@ -40,6 +40,8 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
   }, 15000);
 
   it('completes the full interactive workflow: import -> confirm contract -> approve -> verify Mode A -> switch Mode B -> compare history', async () => {
+    const journeyStartTime = Date.now();
+
     // 1. Navigate to application root
     await page.goto(`http://127.0.0.1:${serverPort}`);
 
@@ -144,5 +146,13 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await page.waitForSelector('.summary-card.mismatch .summary-value:has-text("4")');
     expect(await page.locator('.summary-card.mismatch .summary-value').textContent()).toBe('4');
     expect(await page.locator('.summary-card.consistent .summary-value').textContent()).toBe('3');
+
+    // 10. Verify Export HTML Report button is active and accessible
+    const exportBtn = page.locator('button:has-text("Export HTML Report")');
+    expect(await exportBtn.isVisible()).toBe(true);
+
+    const journeyDurationMs = Date.now() - journeyStartTime;
+    console.log(`[Demonstration Benchmark] Full 12-step workbench journey completed in ${journeyDurationMs}ms (${(journeyDurationMs / 1000).toFixed(2)}s). Fits within 180s video limit.`);
+    expect(journeyDurationMs).toBeLessThan(180000);
   }, 45000);
 });

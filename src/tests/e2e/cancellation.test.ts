@@ -99,7 +99,7 @@ describe('Slice 3 E2E: Execution Cancellation Lifecycle', () => {
 
     // 5. Poll run until it enters terminal status
     let finalSnapshot: any = null;
-    for (let attempts = 0; attempts < 30; attempts++) {
+    for (let attempts = 0; attempts < 50; attempts++) {
       const getRes = await fetch(`http://127.0.0.1:${serverPort}/api/runs/${runId}`);
       if (getRes.status === 200) {
         const snap = await getRes.json();

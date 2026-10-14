@@ -17,7 +17,7 @@ body {
 }
 
 /* Accessibility Focus Outline */
-:focus-visible {
+:focus-visible, button:focus-visible, button:focus {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
 }
@@ -101,9 +101,15 @@ code, pre, .mono {
   align-items: start;
 }
 
+.workbench-column {
+  min-width: 0;
+  max-width: 100%;
+}
+
 @media (max-width: 1080px) {
   .workbench-container {
     grid-template-columns: 1fr;
+    padding: var(--space-3);
   }
 }
 
@@ -115,6 +121,8 @@ code, pre, .mono {
   box-shadow: var(--shadow-sm);
   overflow: hidden;
   margin-bottom: var(--space-6);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .panel-header {
@@ -124,6 +132,8 @@ code, pre, .mono {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .panel-header-title {

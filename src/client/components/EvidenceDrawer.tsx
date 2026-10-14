@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { TestObservation, VerificationRunSnapshot } from '../../shared/contract.js';
 
 interface EvidenceDrawerProps {
@@ -12,6 +12,20 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
   snapshot,
   onClose,
 }) => {
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previouslyFocusedElementRef.current = document.activeElement as HTMLElement;
+    const timer = setTimeout(() => {
+      closeButtonRef.current?.focus();
+    }, 20);
+
+    return () => {
+      clearTimeout(timer);
+      previouslyFocusedElementRef.current?.focus();
+    };
+  }, []);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -31,9 +45,11 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
     : null;
 
   return (
-    <div className="drawer-backdrop" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="drawer-backdrop" onClick={onClose}>
       <div
         className="drawer"
+        role="dialog"
+        aria-modal="true"
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
         aria-labelledby="drawer-title"
@@ -46,6 +62,8 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
             </span>
           </div>
           <button
+            ref={closeButtonRef}
+            autoFocus
             type="button"
             className="btn btn-secondary"
             style={{ minHeight: 34, padding: '4px 10px' }}

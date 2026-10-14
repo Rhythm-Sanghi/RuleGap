@@ -19,16 +19,16 @@
   --accent-primary-hover: #1d4ed8;
   --accent-subtle: #eff6ff;
 
-  /* Functional Status Colors */
-  --status-consistent: #059669;
+  /* Functional Status Colors - WCAG AA compliant contrast ratios >= 4.5:1 */
+  --status-consistent: #065f46;
   --status-consistent-bg: #ecfdf5;
   --status-consistent-border: #a7f3d0;
 
-  --status-mismatch: #dc2626;
+  --status-mismatch: #b91c1c;
   --status-mismatch-bg: #fef2f2;
   --status-mismatch-border: #fecaca;
 
-  --status-inconclusive: #d97706;
+  --status-inconclusive: #92400e;
   --status-inconclusive-bg: #fffbeb;
   --status-inconclusive-border: #fde68a;
 
