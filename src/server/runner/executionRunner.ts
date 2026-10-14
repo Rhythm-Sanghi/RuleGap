@@ -4,7 +4,6 @@ import {
   RuleContract,
   VerificationRunSnapshot,
   TestObservation,
-  RunStatus,
 } from '../../shared/contract.js';
 import {
   computeSummaryCounts,

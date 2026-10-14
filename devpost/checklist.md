@@ -39,7 +39,7 @@ Build mode: fast
   Learner check: Trigger a verification run via curl/API, initiate cancellation mid-flight, and verify that the run settles cleanly as `CANCELLED_PARTIAL` with unattempted tests marked `NOT_EXECUTED`.
   Commit: `feat: implement authoritative plan gate, atomic run store, sse streaming, and cancellation lifecycle`
 
-- [ ] **4. Complete Hybrid Guided Workbench Interface**
+- [x] **4. Complete Hybrid Guided Workbench Interface**
   Becomes usable: The complete interactive RuleGap web application adhering to the Workshop + Gridline + Studio Utility design system: text/PDF import with fallback, rule contract editor, target fixture control toolbar, pre-flight plan review table, live execution progress bar, 4-state summary badges, primary evidence matrix, expandable drawer, and run history selector.
   Why now: Connects all verified backend components into the human-centered, responsive, and accessible workbench designed in the PRD.
   PRD ref: `prd.md > Screens and Layout`, `prd.md > Look and Feel`, `prd.md > States and Boundaries`, `prd.md > Accessibility & Responsiveness Requirements`
