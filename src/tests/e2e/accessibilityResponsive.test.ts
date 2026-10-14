@@ -288,7 +288,23 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
         return active?.getAttribute('aria-label') === 'Close evidence inspection drawer';
       }, { timeout: 10000 });
       const focusedInDrawer = await page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
-      expect(focusedInDrawer).toBe('Close evidence inspection drawer');
+      // Verify Tab containment inside drawer: Tab and Shift+Tab cannot escape to background
+      await page.keyboard.press('Tab');
+      let isFocusInsideDrawer = await page.evaluate(() => {
+        const drawer = document.querySelector('.drawer');
+        return drawer ? drawer.contains(document.activeElement) : false;
+      });
+      expect(isFocusInsideDrawer).toBe(true);
+
+      // Shift+Tab back
+      await page.keyboard.down('Shift');
+      await page.keyboard.press('Tab');
+      await page.keyboard.up('Shift');
+      isFocusInsideDrawer = await page.evaluate(() => {
+        const drawer = document.querySelector('.drawer');
+        return drawer ? drawer.contains(document.activeElement) : false;
+      });
+      expect(isFocusInsideDrawer).toBe(true);
 
       // Press Escape to dismiss drawer and confirm focus restoration
       await page.keyboard.press('Escape');

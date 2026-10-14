@@ -12,6 +12,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
   snapshot,
   onClose,
 }) => {
+  const drawerRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
@@ -26,10 +27,41 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
       previouslyFocusedElementRef.current?.focus();
     };
   }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
         onClose();
+        return;
+      }
+
+      if (e.key === 'Tab' && drawerRef.current) {
+        const focusables = Array.from(
+          drawerRef.current.querySelectorAll<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          )
+        ).filter((el) => !el.hasAttribute('disabled') && el.offsetParent !== null);
+
+        if (focusables.length === 0) {
+          e.preventDefault();
+          return;
+        }
+
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === first || document.activeElement === drawerRef.current) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -47,6 +79,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
   return (
     <div className="drawer-backdrop" onClick={onClose}>
       <div
+        ref={drawerRef}
         className="drawer"
         role="dialog"
         aria-modal="true"

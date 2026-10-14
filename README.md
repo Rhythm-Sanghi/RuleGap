@@ -44,11 +44,11 @@ Historical verification runs are preserved immutably, allowing stakeholders to c
 
 ## Architectural Principles & Integrity
 
-- **Zero Cloud Dependencies & Zero Paid APIs**: Runs entirely on the local machine without external LLM API keys or SaaS subscriptions.
+- **No External Cloud Services & No Paid APIs**: Runs entirely on the local machine using local Node.js software packages; requires no external LLM API keys, cloud hosting, or paid subscriptions.
 - **Hermetic Security Perimeter**: All browser contexts block external network routes, unrequested popups, and service workers, restricting execution strictly to `127.0.0.1`.
 - **Anti-CSRF & Host Header Validation**: All state-changing API endpoints require the custom `X-RuleGap-Client: true` header and validate the `Host` header.
 - **Evidence Integrity**: Never claims universal correctness or complete form coverage from finite samples. Reports consistency strictly across tested values with explicit sampling disclaimers.
-- **Crash Recovery**: Active verification runs maintain atomic filesystem checkpoints (`.active-[runId].json`), safely reconciling interrupted runs to `FAILED` on server restart.
+- **Crash Recovery**: Active verification runs maintain atomic filesystem checkpoints (`.active-[runId].json`), safely reconciling interrupted runs to `INTERRUPTED_CRASH` upon process restart.
 
 ---
 
@@ -101,13 +101,35 @@ npm run test:e2e
 
 ---
 
+## Manual 200% Browser Zoom Verification Checklist
+
+Automated tests verify layout reflow at a zoom-equivalent 640px CSS layout viewport. To verify actual native browser zoom in Google Chrome or Microsoft Edge:
+
+1. Open `http://127.0.0.1:3000` in Chrome or Edge.
+2. Press `Ctrl + +` (Windows) or `Cmd + +` (macOS) repeatedly until the browser zoom indicator reads **200%**.
+3. **Check Panels**: Verify the Rule Ingestion panel and Verification Execution panel stack cleanly into a single vertical column.
+4. **Check Header**: Verify the brand title, status badge, and navigation elements wrap without overlapping.
+5. **Check Pre-Flight Table**: Ensure the 7 boundary cases display cleanly; the table scrolls horizontally inside its container (`.data-table-container`) without causing page-level horizontal overflow.
+6. **Check Evidence Drawer**: Click **Inspect** on a case; verify the slide-over drawer opens, focus is trapped on the close button, and all diagnostic text and screenshots are legible.
+7. **Check History & Export**: Verify the Run History dropdown and Export HTML Report buttons remain clickable and reachable.
+
+---
+
+## Known Limitations
+
+- **Finite Boundary Sampling**: RuleGap evaluates software consistency strictly at computed mathematical boundaries and user-specified demonstration probe values. Passing all boundary tests does not mathematically prove that the form is free of unhandled defects across unprobed inputs.
+- **Fixture Fidelity & DOM Selectors**: Black-box browser observation requires identifiable input selectors and feedback containers. Highly unconventional custom canvas controls or unexposed shadow-DOM elements require tailored selector mappings.
+- **Assistive Technology / Screen Reader Testing**: While automated WCAG 2.1 AA audits via `@axe-core/playwright` report zero critical or serious accessibility violations, hands-on testing with screen readers (e.g., NVDA, JAWS, VoiceOver) has not been conducted and remains an open verification task.
+
+---
+
 ## Technology Stack
 
 - **Runtime & Backend**: Node.js, Express, TypeScript, Zod
 - **Frontend**: React 18, Vite, Custom CSS (Workshop + Gridline design tokens)
 - **Browser Automation**: Playwright (Headless Chromium)
 - **Document Processing**: `pdfjs-dist` (client-side text extraction)
-- **Testing**: Vitest, Playwright Test
+- **Testing**: Vitest, Playwright Test, `@axe-core/playwright`
 
 ---
 
