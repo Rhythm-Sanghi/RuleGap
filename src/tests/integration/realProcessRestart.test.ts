@@ -1,11 +1,14 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterAll } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 describe('Slice 5 Reliability: Real Process Crash & Restart Recovery', () => {
   const testPort = 3042;
+  const isolatedDataDir = path.join(os.tmpdir(), `rulegap-restart-test-${Date.now()}`);
+  const activeProcesses: ChildProcess[] = [];
 
   function spawnServer(): Promise<{ proc: ChildProcess; url: string }> {
     return new Promise((resolve, reject) => {
@@ -16,18 +19,24 @@ describe('Slice 5 Reliability: Real Process Crash & Restart Recovery', () => {
 
       const proc = spawn(cmd, args, {
         cwd: process.cwd(),
-        env: { ...process.env, PORT: String(testPort) },
+        env: {
+          ...process.env,
+          PORT: String(testPort),
+          RULEGAP_DATA_DIR: isolatedDataDir,
+        },
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: !useDist,
       });
+      activeProcesses.push(proc);
 
       let stdout = '';
       let stderr = '';
+      let started = false;
       const onData = (data: Buffer) => {
         const str = data.toString();
         stdout += str;
-        if (stdout.includes(`Running on http://127.0.0.1:${testPort}`)) {
-          proc.stdout?.off('data', onData);
+        if (!started && stdout.includes(`Running on http://127.0.0.1:${testPort}`)) {
+          started = true;
           resolve({ proc, url: `http://127.0.0.1:${testPort}` });
         }
       };
@@ -59,6 +68,19 @@ describe('Slice 5 Reliability: Real Process Crash & Restart Recovery', () => {
       }
     });
   }
+
+  afterAll(async () => {
+    for (const p of activeProcesses) {
+      await killProcess(p).catch(() => {});
+    }
+    if (fs.existsSync(isolatedDataDir)) {
+      try {
+        await fs.promises.rm(isolatedDataDir, { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
+    }
+  });
 
   it('reconciles in-flight run from unexpected server crash upon process restart', async () => {
     // 1. Spawn Server Instance 1

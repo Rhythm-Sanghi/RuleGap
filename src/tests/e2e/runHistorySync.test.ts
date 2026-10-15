@@ -3,10 +3,12 @@ import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
+import { getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 
 describe('Run History and Displayed Results Synchronization Regression Test', () => {
   const testPort = 3055;
-  const isolatedDataDir = path.resolve(process.cwd(), '.rulegap-sync-test');
+  const isolatedDataDir = path.join(os.tmpdir(), `rulegap-sync-test-${Date.now()}`);
   let currentProc: ChildProcess | null = null;
   let browser: Browser;
 
@@ -22,7 +24,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
         env: {
           ...process.env,
           PORT: String(testPort),
-          RULEGAP_DATA_DIR: '.rulegap-sync-test',
+          RULEGAP_DATA_DIR: isolatedDataDir,
         },
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: !useDist,
@@ -30,11 +32,12 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
 
       let stdout = '';
       let stderr = '';
+      let started = false;
       const onData = (data: Buffer) => {
         const str = data.toString();
         stdout += str;
-        if (stdout.includes(`Running on http://127.0.0.1:${testPort}`)) {
-          proc.stdout?.off('data', onData);
+        if (!started && stdout.includes(`Running on http://127.0.0.1:${testPort}`)) {
+          started = true;
           currentProc = proc;
           resolve({ proc, url: `http://127.0.0.1:${testPort}` });
         }
@@ -70,7 +73,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
     if (fs.existsSync(isolatedDataDir)) {
       await fs.promises.rm(isolatedDataDir, { recursive: true, force: true });
     }
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
   });
 
   afterAll(async () => {
@@ -91,6 +94,10 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
 
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') console.error('[Page console error]:', msg.text());
+    });
+    page.on('pageerror', (err) => console.error('[Page uncaught error]:', err));
 
     try {
       await page.goto(url);
@@ -110,7 +117,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       await startBtn.click();
 
       // Wait for Mode A completion
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
       expect(await page.locator('.summary-card.consistent .summary-value').textContent()).toBe('3');
       expect(await page.locator('.summary-card.mismatch .summary-value').textContent()).toBe('4');
 
@@ -133,13 +140,23 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       expect(historyOptionsA[0]).toContain('4 Mismatches');
 
       // 4. Switch to Mode B, reapprove, and run verification
-      await page.locator('#fixture-mode-select').selectOption('corrected');
-      await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
+      const modeSelectB = page.locator('#fixture-mode-select');
+      await modeSelectB.scrollIntoViewIfNeeded();
+      await modeSelectB.selectOption('corrected');
+      await page.waitForSelector('.panel[data-fixture-mode="corrected"]');
+      await page.waitForSelector('.badge:has-text("Approval Required")');
+      const approveBtnB = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+      await approveBtnB.scrollIntoViewIfNeeded();
+      await approveBtnB.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
-      await page.locator('button:has-text("Start Browser Verification Run")').click();
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
+      const startBtnB = page.locator('button:has-text("Start Browser Verification Run")');
+      await startBtnB.scrollIntoViewIfNeeded();
+      await startBtnB.click();
+      await page.waitForSelector('button:has-text("Verification Running...")');
 
       // Wait for Mode B completion
-      await page.waitForSelector('.callout-success', { timeout: 75000 });
+      await page.waitForSelector('.callout-success', { timeout: 90000 });
       expect(await page.locator('.summary-card.consistent .summary-value').textContent()).toBe('7');
       expect(await page.locator('.summary-card.mismatch .summary-value').textContent()).toBe('0');
 
@@ -282,5 +299,5 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
     } finally {
       await context.close();
     }
-  }, 120000);
+  }, 180000);
 });

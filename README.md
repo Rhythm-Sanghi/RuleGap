@@ -2,9 +2,9 @@
 
 > **"The rules say yes. The form says no."**
 
-An open-source, local-first software consistency verifier built for the Devpost *Build With AI: Basics 2026* hackathon.
+RuleGap is an open-source, local-first software consistency verifier. It detects, documents, and proves discrepancies between written policy guidelines (PDF or pasted text) and digital form validation logic through automated, black-box browser execution.
 
-RuleGap detects, documents, and proves discrepancies between written policy guidelines (PDF/text) and digital form validation logic through automated, black-box browser execution.
+![RuleGap Verification Workbench showing Mode A verification with 4 confirmed mismatches](devpost/screenshots/03-four-mismatch-result.png)
 
 ---
 
@@ -12,20 +12,22 @@ RuleGap detects, documents, and proves discrepancies between written policy guid
 
 When institutions update grant limits, scholarship income thresholds, or regulatory policies, digital web forms frequently remain hardcoded with obsolete criteria. Eligible applicants are silently rejected without explanation, while compliance officers and engineers lack shared, reproducible evidence of where and how the form diverged from the documented policy.
 
-## The Solution
+---
 
-RuleGap provides a unified, local-first verification workbench:
+## How It Works
 
-1. **Policy Ingestion**: Paste policy text or extract text from a PDF policy document (with graceful inline fallback for unparseable documents).
+RuleGap provides a unified, local-first verification workbench operating in five steps:
+
+1. **Policy Ingestion**: Paste policy text or extract text from a local PDF document (with client-side extraction and graceful manual fallback).
 2. **Rule Contract Confirmation**: Formally confirm the field name, comparison operator (`<=`, `<`, `>=`, `>`), threshold value, unit, and source excerpt.
-3. **Pre-Flight Test Plan Review**: The system deterministically derives boundary test values ($T-1$, $T$, $T+1$) and demonstration probes. An authoritative plan approval gate requires explicit user sign-off before any browser execution can begin.
-4. **Independent Black-Box Browser Verification**: A hermetic Playwright Chromium runner navigates to the authorized target form, inputs values, submits, and inspects observable DOM feedback without reading internal form source code or hardcoded thresholds.
-5. **Primary Evidence Matrix & Inspection**: Results are categorized into four mutually exclusive classifications:
+3. **Pre-Flight Test Plan Review**: The system deterministically derives boundary test values ($T-1$, $T$, $T+1$) and demonstration probes. An authoritative server-side plan approval gate requires explicit user sign-off before any browser execution can begin.
+4. **Independent Black-Box Browser Verification**: A hermetic Playwright Chromium runner navigates to the authorized local target form, inputs values, submits, and inspects observable DOM feedback without reading internal form source code or hardcoded thresholds.
+5. **Evidence Matrix & Offline Export**: Results are classified into four mutually exclusive categories:
    - **Consistent**: Observable form behavior matches policy expectation.
    - **Confirmed Mismatch**: Form rejected an applicant the policy permits, or accepted one the policy forbids.
-   - **Inconclusive**: Form rejected due to an unrelated required field or ambiguous feedback.
+   - **Inconclusive**: Form rejected due to an unrelated required field, ambiguous feedback, or conflicting indicators.
    - **Execution Error**: Target field or submit button missing from the DOM.
-6. **Standalone Offline HTML Evidence Export**: Download a single-file, self-contained HTML report with inline styling and base64-embedded screenshots that opens offline with zero external network calls.
+   The entire run can be downloaded as a single-file, self-contained offline HTML report with base64-embedded screenshots.
 
 ---
 
@@ -42,12 +44,19 @@ Historical verification runs are preserved immutably, allowing stakeholders to c
 
 ---
 
-## Architectural Principles & Integrity
+## Scope & Target Limitations
+
+- **Synthetic Local Fixture Only**: RuleGap is designed and validated strictly against its authorized local synthetic scholarship fixture (`http://127.0.0.1:3000/fixtures/scholarship`). It does not navigate to external URLs, third-party websites, or arbitrary web forms.
+- **Finite Boundary Sampling**: RuleGap evaluates software consistency strictly at computed mathematical boundaries and selected demonstration probe values. Sampled consistency demonstrates that the tested boundaries conform to policy, but finite sampling does not prove universal correctness across untested values.
+- **Single-Variable Numerical Contracts**: The current implementation models single-variable relational operators (`<`, `<=`, `>`, `>=`) with integer thresholds. Compound rules and multi-field dependencies are not supported.
+
+---
+
+## Architectural Principles & Security Boundary
 
 - **No External Cloud Services & No Paid APIs**: Runs entirely on the local machine using local Node.js software packages; requires no external LLM API keys, cloud hosting, or paid subscriptions.
-- **Hermetic Security Perimeter**: All browser contexts block external network routes, unrequested popups, and service workers, restricting execution strictly to `127.0.0.1`.
-- **Anti-CSRF & Host Header Validation**: All state-changing API endpoints require the custom `X-RuleGap-Client: true` header and validate the `Host` header.
-- **Evidence Integrity**: Never claims universal correctness or complete form coverage from finite samples. Reports consistency strictly across tested values with explicit sampling disclaimers.
+- **Hermetic Security Perimeter**: All browser contexts block external network routes, unrequested popups, and service workers, restricting execution strictly to `127.0.0.1`. Target fixture URLs are derived from the trusted server socket, preventing Host header redirection attacks.
+- **Anti-CSRF & Host Header Validation**: All state-changing API endpoints require the custom `X-RuleGap-Client: true` header and validate the `Host` header against loopback addresses.
 - **Crash Recovery**: Active verification runs maintain atomic filesystem checkpoints (`.active-[runId].json`), safely reconciling interrupted runs to `FAILED` (with in-flight observations tagged as `INTERRUPTED`) upon process restart.
 
 ---
@@ -89,13 +98,16 @@ npm run build
 npm start
 ```
 
-### Running Tests
+### Type Checking & Test Execution
 
 ```bash
-# Run all unit, integration, and E2E test suites
+# Run strict TypeScript checks (client and server)
+npm run typecheck
+
+# Run full unit and integration test suite
 npm test
 
-# Run E2E Playwright tests specifically
+# Run Playwright E2E verification test suite
 npm run test:e2e
 ```
 
@@ -115,21 +127,25 @@ Automated tests verify layout reflow at a zoom-equivalent 640px CSS layout viewp
 
 ---
 
-## Known Limitations
-
-- **Finite Boundary Sampling**: RuleGap evaluates software consistency strictly at computed mathematical boundaries and user-specified demonstration probe values. Passing all boundary tests does not mathematically prove that the form is free of unhandled defects across unprobed inputs.
-- **Fixture Fidelity & DOM Selectors**: Black-box browser observation requires identifiable input selectors and feedback containers. Highly unconventional custom canvas controls or unexposed shadow-DOM elements require tailored selector mappings.
-- **Assistive Technology / Screen Reader Testing**: While automated WCAG 2.1 AA audits via `@axe-core/playwright` report zero critical or serious accessibility violations, hands-on testing with screen readers (e.g., NVDA, JAWS, VoiceOver) has not been conducted and remains an open verification task.
-
----
-
 ## Technology Stack
 
 - **Runtime & Backend**: Node.js, Express, TypeScript, Zod
 - **Frontend**: React 18, Vite, Custom CSS (Workshop + Gridline design tokens)
 - **Browser Automation**: Playwright (Headless Chromium)
 - **Document Processing**: `pdfjs-dist` (client-side text extraction)
-- **Testing**: Vitest, Playwright Test, `@axe-core/playwright`
+- **Testing**: Vitest, Playwright, `@axe-core/playwright`
+
+---
+
+## Planning & Hackathon Artifacts
+
+The core planning, product definition, and architectural blueprints created for the Devpost *Build With AI: Basics 2026* hackathon are preserved in the [`devpost/`](devpost/) directory:
+
+- [Scope Document](devpost/scope.md) — Problem statement, boundary definition, and proof-of-concept cut line.
+- [Product Requirements Document (PRD)](devpost/prd.md) — User journey, feature specifications, states, and non-happy-path behaviors.
+- [Technical Specification](devpost/spec.md) — Technical architecture, schema definitions, and security invariants.
+- [Build Checklist](devpost/checklist.md) — Verification records across the five delivery slices.
+- [Interactive Application Map](devpost/app-map.html) — Visual SVG architecture diagram and code tour stops.
 
 ---
 

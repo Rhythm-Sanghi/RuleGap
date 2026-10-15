@@ -1,5 +1,6 @@
 import React from 'react';
 import { TestPlanRecord } from '../../shared/contract.js';
+import { formatValueWithUnit } from '../../shared/ruleEngine.js';
 
 interface PreFlightPlanProps {
   plan: TestPlanRecord | null;
@@ -7,6 +8,7 @@ interface PreFlightPlanProps {
   isGenerating: boolean;
   isApproving: boolean;
   planError: string | null;
+  runError?: string | null;
   onApprove: () => void;
   isRunning: boolean;
   isCancelling: boolean;
@@ -21,6 +23,7 @@ export const PreFlightPlan: React.FC<PreFlightPlanProps> = ({
   isGenerating,
   isApproving,
   planError,
+  runError,
   onApprove,
   isRunning,
   isCancelling,
@@ -58,7 +61,12 @@ export const PreFlightPlan: React.FC<PreFlightPlanProps> = ({
   }
 
   return (
-    <div className="panel" aria-labelledby="pre-flight-heading">
+    <div
+      className="panel"
+      aria-labelledby="pre-flight-heading"
+      data-fixture-mode={plan.fixtureMode}
+      data-plan-id={plan.planId}
+    >
       <div className="panel-header">
         <div className="panel-header-title">
           <span className={`step-indicator ${isApproved ? 'active' : ''}`}>4</span>
@@ -74,9 +82,9 @@ export const PreFlightPlan: React.FC<PreFlightPlanProps> = ({
       </div>
 
       <div className="panel-body">
-        {planError && (
+        {(planError || runError) && (
           <div className="callout callout-danger" role="alert">
-            {planError}
+            {planError || runError}
           </div>
         )}
 
@@ -90,7 +98,7 @@ export const PreFlightPlan: React.FC<PreFlightPlanProps> = ({
           <table className="data-table" aria-label="Pre-flight test plan cases">
             <thead>
               <tr>
-                <th scope="col">Test Value (INR)</th>
+                <th scope="col">Test Value ({plan.contract?.unit || 'Value'})</th>
                 <th scope="col">Policy Expectation</th>
                 <th scope="col">Test Rationale</th>
               </tr>
@@ -99,7 +107,7 @@ export const PreFlightPlan: React.FC<PreFlightPlanProps> = ({
               {plan.cases.map((c) => (
                 <tr key={c.caseId}>
                   <td className="mono" style={{ fontWeight: 600 }}>
-                    ₹{c.value.toLocaleString('en-IN')}
+                    {formatValueWithUnit(c.value, plan.contract?.unit || c.unit || 'INR')}
                   </td>
                   <td>
                     <span

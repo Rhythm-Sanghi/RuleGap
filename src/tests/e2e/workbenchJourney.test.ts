@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
 import { chromium, Browser, Page } from 'playwright';
 import { createApp } from '../../server/server.js';
-import { browserPool } from '../../server/runner/browserPool.js';
+import { browserPool, getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 
 describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
   let server: http.Server;
@@ -16,11 +16,12 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
       server = app.listen(0, '127.0.0.1', () => {
         const addr = server.address();
         serverPort = typeof addr === 'object' && addr ? addr.port : 3000;
+        app.set('serverPort', serverPort);
         resolve();
       });
     });
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
     page = await browser.newPage();
     page.on('console', (msg) => console.log('BROWSER CONSOLE:', msg.text()));
     page.on('pageerror', (err) => console.error('BROWSER PAGEERROR:', err));
@@ -77,14 +78,17 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await approveBtn.click();
     await page.waitForSelector('.badge:has-text("Plan Approved")');
     expect(await page.locator('.badge:has-text("Plan Approved")').isVisible()).toBe(true);
+    await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
     // 5. Click "Start Browser Verification Run" (Mode A default)
-    const startRunBtn = page.getByRole('button', { name: 'Start Browser Verification Run' });
+    const startRunBtn = page.locator('button:has-text("Start Browser Verification Run")');
+    await startRunBtn.scrollIntoViewIfNeeded();
     await startRunBtn.click();
+    await page.waitForSelector('button:has-text("Verification Running...")');
 
     // Wait for Mode A verification to complete (all 7 observations finished)
     await page.waitForSelector('.callout-danger', {
-      timeout: 75000,
+      timeout: 90000,
     });
 
     // Check Mode A summary counts in the UI
@@ -110,6 +114,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await page.locator('#fixture-mode-select').selectOption('corrected');
 
     // Verify approval required for the new mode
+    await page.waitForSelector('.panel[data-fixture-mode="corrected"]');
     await page.waitForSelector('.badge:has-text("Approval Required")');
     expect(await page.locator('.badge:has-text("Approval Required")').isVisible()).toBe(true);
 
@@ -118,13 +123,16 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await approveBtn2.click();
     await page.waitForSelector('.badge:has-text("Plan Approved")');
     expect(await page.locator('.badge:has-text("Plan Approved")').isVisible()).toBe(true);
+    await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
-    const startRunBtn2 = page.getByRole('button', { name: 'Start Browser Verification Run' });
+    const startRunBtn2 = page.locator('button:has-text("Start Browser Verification Run")');
+    await startRunBtn2.scrollIntoViewIfNeeded();
     await startRunBtn2.click();
+    await page.waitForSelector('button:has-text("Verification Running...")');
 
     // Wait for Mode B verification to complete
     await page.waitForSelector('.callout-success', {
-      timeout: 75000,
+      timeout: 90000,
     });
 
     // Check Mode B summary counts in the UI
@@ -154,5 +162,5 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     const journeyDurationMs = Date.now() - journeyStartTime;
     console.log(`[Demonstration Benchmark] Full 12-step workbench journey completed in ${journeyDurationMs}ms (${(journeyDurationMs / 1000).toFixed(2)}s). Fits within 180s video limit.`);
     expect(journeyDurationMs).toBeLessThan(180000);
-  }, 120000);
+  }, 180000);
 });

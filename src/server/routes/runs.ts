@@ -1,7 +1,11 @@
 import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { RuleContractSchema } from '../../shared/contract.js';
+import {
+  RuleContractSchema,
+  isScholarshipFieldCompatible,
+  isScholarshipUnitCompatible,
+} from '../../shared/contract.js';
 import { planStore } from '../storage/planStore.js';
 import { runStore } from '../storage/runStore.js';
 import { evidenceStore } from '../storage/evidenceStore.js';
@@ -10,6 +14,14 @@ import { cancellationManager } from '../runner/cancellationManager.js';
 import { SERVER_CONFIG } from '../config.js';
 
 export const runsRouter = Router();
+
+// Disable caching for all runs API endpoints to ensure fresh status updates
+runsRouter.use('/api/runs', (_req: Request, res: Response, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
 
 const StartRunBodySchema = z.object({
   planId: z.string().uuid(),
@@ -74,6 +86,17 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
     // Always derive the executed contract strictly from the approved server plan
     const executedContract = plan.contract;
 
+    if (!isScholarshipFieldCompatible(executedContract.fieldName)) {
+      return res.status(400).json({
+        error: `Cannot execute plan: Contract field '${executedContract.fieldName}' is incompatible with fixture '${plan.fixtureId}'.`,
+      });
+    }
+    if (!isScholarshipUnitCompatible(executedContract.unit)) {
+      return res.status(400).json({
+        error: `Cannot execute plan: Contract unit '${executedContract.unit}' is incompatible with fixture '${plan.fixtureId}'.`,
+      });
+    }
+
     // 2. Concurrency lock: at most one active run
     if (executionRunner.isRunActive()) {
       return res.status(409).json({
@@ -82,17 +105,30 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
     }
 
     const runId = crypto.randomUUID();
-    const hostPort = req.headers.host?.includes(':') ? Number(req.headers.host.split(':')[1]) : null;
+    const socketWithServer = req.socket as { server?: { address?: () => unknown } };
+    const serverAddr =
+      socketWithServer.server && typeof socketWithServer.server.address === 'function'
+        ? socketWithServer.server.address()
+        : null;
+    const serverPort =
+      serverAddr && typeof serverAddr === 'object' && serverAddr && 'port' in serverAddr
+        ? (serverAddr as { port: number }).port
+        : null;
     const socketAddr = typeof req.socket.address === 'function' ? req.socket.address() : null;
     const socketPort =
       socketAddr && typeof socketAddr === 'object' && 'port' in socketAddr
         ? (socketAddr as { port: number }).port
         : req.socket.localPort;
-    const appPort = req.app.get('serverPort') || req.app.get('port');
-    const port = hostPort || Number(socketPort || appPort) || SERVER_CONFIG.port;
+    const configuredPort = req.app.get('serverPort') || req.app.get('port');
+    const port = Number(serverPort || socketPort || configuredPort) || SERVER_CONFIG.port;
 
     // Start asynchronous execution with the authoritative approved contract
-    await executionRunner.startRun(runId, plan, executedContract, port);
+    try {
+      await executionRunner.startRun(runId, plan, executedContract, port);
+    } catch (startErr: unknown) {
+      const errorMsg = startErr instanceof Error ? startErr.message : String(startErr);
+      return res.status(500).json({ error: `Failed to initialize verification run: ${errorMsg}` });
+    }
 
     res.status(201).json({ runId, status: 'RUNNING' });
   } catch (err: unknown) {
@@ -161,9 +197,18 @@ runsRouter.get('/api/runs/:id/events', async (req: Request, res: Response) => {
     } else {
       res.write(`id: 1\nevent: run_completed\ndata: ${JSON.stringify(run)}\n\n`);
     }
-    res.end();
+    setTimeout(() => {
+      try {
+        res.end();
+      } catch {
+        // ignore closed connection
+      }
+    }, 1500);
     return;
   }
+
+  // Send initial event to ensure client socket transitions to open state
+  res.write(`event: connected\ndata: {"status":"connected"}\n\n`);
 
   const lastEventIdHeader = req.headers['last-event-id'];
   const lastEventId = typeof lastEventIdHeader === 'string' ? Number(lastEventIdHeader) : undefined;

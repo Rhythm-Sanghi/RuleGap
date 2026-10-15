@@ -7,6 +7,7 @@ import {
   TestObservation,
   SummaryCounts,
   SampledMismatchSummary,
+  RuleContract,
 } from './contract.js';
 
 /**
@@ -220,3 +221,54 @@ export function computeSampledMismatchSummary(
     disclaimer: `Discrepancy confirmed at ${mismatchValues.length} sampled test values between ${lowestMismatchValue.toLocaleString()} and ${highestMismatchValue.toLocaleString()}. Intermediate un-sampled values are not tested.`,
   };
 }
+
+/**
+ * Formats a numeric value with its associated unit.
+ * For currency 'INR', formats with standard ₹ prefix.
+ */
+export function formatValueWithUnit(value: number, unit: string): string {
+  if (unit === 'INR') {
+    return `₹${value.toLocaleString('en-IN')}`;
+  }
+  return `${value.toLocaleString()} ${unit}`;
+}
+
+/**
+ * Generates an accurate, operator- and outcome-aware explanation for a test observation.
+ * Handles both contradiction directions:
+ * Direction A: Policy expects ACCEPT, form rejects.
+ * Direction B: Policy expects REJECT, form accepts.
+ */
+export function formatObservationExplanation(
+  contract: Pick<RuleContract, 'fieldName' | 'operator' | 'threshold' | 'unit'>,
+  observation: Pick<TestObservation, 'value' | 'expectedOutcome' | 'observedFormOutcome' | 'classification'>
+): string {
+  const { fieldName, operator, threshold, unit } = contract;
+  const { value, expectedOutcome, observedFormOutcome, classification } = observation;
+  const formattedThreshold = formatValueWithUnit(threshold, unit);
+
+  if (classification === 'CONFIRMED_MISMATCH') {
+    if (expectedOutcome === 'ACCEPT' && observedFormOutcome === 'REJECTED') {
+      return `Policy rule (${fieldName} ${operator} ${formattedThreshold}) permits this value, but the application form actively rejected it.`;
+    }
+    if (expectedOutcome === 'REJECT' && observedFormOutcome === 'ACCEPTED') {
+      return `Policy rule (${fieldName} ${operator} ${formattedThreshold}) prohibits this value, but the application form accepted it.`;
+    }
+    return `Policy expected ${expectedOutcome} under rule (${fieldName} ${operator} ${formattedThreshold}), but observed form outcome was ${observedFormOutcome ?? 'unknown'}.`;
+  }
+
+  if (classification === 'CONSISTENT') {
+    return `Form outcome (${observedFormOutcome}) matches documented policy expectation (${expectedOutcome}) for ${fieldName} ${operator} ${formattedThreshold}.`;
+  }
+
+  if (classification === 'INCONCLUSIVE') {
+    return `Verification inconclusive: form outcome could not be deterministically determined for value ${value}.`;
+  }
+
+  if (classification === 'EXECUTION_ERROR') {
+    return `Execution error occurred while observing form submission for value ${value}.`;
+  }
+
+  return `Observation state: ${classification ?? 'PENDING'}.`;
+}
+

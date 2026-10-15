@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { RuleContract, TestPlanRecord } from '../../shared/contract.js';
 import { DEMO_PROBES } from '../../shared/sampleData.js';
 
@@ -9,8 +9,19 @@ export function usePreFlightPlan() {
   const [isApproving, setIsApproving] = useState<boolean>(false);
   const [planError, setPlanError] = useState<string | null>(null);
 
+  const generationIdRef = useRef<number>(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const generatePlan = useCallback(
     async (contract: RuleContract, currentMode: 'inconsistent' | 'corrected' = fixtureMode) => {
+      // Abort previous in-flight plan generation if active
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const genId = ++generationIdRef.current;
       setIsGenerating(true);
       setPlanError(null);
 
@@ -28,6 +39,7 @@ export function usePreFlightPlan() {
             targetFieldSelector: '#annual-income',
             demoProbes: DEMO_PROBES,
           }),
+          signal: controller.signal,
         });
 
         if (!res.ok) {
@@ -36,14 +48,28 @@ export function usePreFlightPlan() {
         }
 
         const createdPlan: TestPlanRecord = await res.json();
+        if (genId !== generationIdRef.current) {
+          return null; // Stale plan generation response superseded by newer request
+        }
+
         setPlan(createdPlan);
         return createdPlan;
       } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
+          return null;
+        }
+        if (genId !== generationIdRef.current) {
+          return null;
+        }
         const msg = err instanceof Error ? err.message : String(err);
         setPlanError(msg);
+        // On plan-generation failure, do not leave an obsolete approved plan executable
+        setPlan(null);
         return null;
       } finally {
-        setIsGenerating(false);
+        if (genId === generationIdRef.current) {
+          setIsGenerating(false);
+        }
       }
     },
     [fixtureMode]
@@ -82,6 +108,10 @@ export function usePreFlightPlan() {
   }, [plan]);
 
   const resetPlan = () => {
+    generationIdRef.current++;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setPlan(null);
     setPlanError(null);
   };

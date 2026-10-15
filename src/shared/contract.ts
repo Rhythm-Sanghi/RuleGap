@@ -24,6 +24,34 @@ export const RuleContractSchema = z.object({
 });
 export type RuleContract = z.infer<typeof RuleContractSchema>;
 
+export const SCHOLARSHIP_COMPATIBLE_FIELD_NAMES = [
+  'annual family income',
+  'family income',
+  'annual income',
+  'household income',
+  'annual household income',
+  'income',
+] as const;
+
+export function isScholarshipFieldCompatible(fieldName: string): boolean {
+  if (typeof fieldName !== 'string') return false;
+  const clean = fieldName
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, '')
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return (SCHOLARSHIP_COMPATIBLE_FIELD_NAMES as readonly string[]).includes(clean);
+}
+
+export const SCHOLARSHIP_COMPATIBLE_UNITS = ['INR', '₹', 'RS'] as const;
+
+export function isScholarshipUnitCompatible(unit: string): boolean {
+  if (typeof unit !== 'string') return false;
+  const clean = unit.trim().toUpperCase().replace(/\.$/, '');
+  return (SCHOLARSHIP_COMPATIBLE_UNITS as readonly string[]).includes(clean);
+}
+
 export const PolicyExpectationSchema = z.enum(['ACCEPT', 'REJECT']);
 export type PolicyExpectation = z.infer<typeof PolicyExpectationSchema>;
 

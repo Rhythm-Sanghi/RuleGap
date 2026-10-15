@@ -14,6 +14,7 @@ import { browserPool } from './browserPool.js';
 import { observeFormSubmission } from './formObserver.js';
 import { cancellationManager } from './cancellationManager.js';
 import { runStore } from '../storage/runStore.js';
+import { evidenceStore } from '../storage/evidenceStore.js';
 import { SERVER_CONFIG } from '../config.js';
 
 export interface SseEvent {
@@ -65,8 +66,11 @@ export class ExecutionRunner {
   }
 
   public emitEvent(runId: string, type: SseEvent['type'], data: unknown): void {
-
     if (!this.eventBuffers.has(runId)) {
+      if (this.eventBuffers.size >= 20) {
+        const oldestKey = this.eventBuffers.keys().next().value;
+        if (oldestKey) this.eventBuffers.delete(oldestKey);
+      }
       this.eventBuffers.set(runId, []);
     }
     const buffer = this.eventBuffers.get(runId)!;
@@ -89,6 +93,22 @@ export class ExecutionRunner {
         }
       }
     }
+
+    if (type === 'run_completed' || type === 'run_cancelled' || type === 'run_failed') {
+      const currentSubs = this.subscribers.get(runId);
+      if (currentSubs) {
+        setTimeout(() => {
+          for (const res of currentSubs) {
+            try {
+              res.end();
+            } catch {
+              // ignore closed connections
+            }
+          }
+          this.subscribers.delete(runId);
+        }, 1000);
+      }
+    }
   }
 
   /**
@@ -107,41 +127,52 @@ export class ExecutionRunner {
     this.currentActiveRunId = runId;
     cancellationManager.registerRun(runId);
 
-    const initialObservations: TestObservation[] = plan.cases.map((c) => ({
-      caseId: c.caseId,
-      value: c.value,
-      expectedOutcome: c.expectedOutcome,
-      observedFormOutcome: null,
-      observedFeedbackText: null,
-      classification: null,
-      lifecycleState: 'PENDING',
-      durationMs: 0,
-      screenshotId: null,
-      diagnosticDetails: null,
-      executedAt: null,
-    }));
+    try {
+      const initialObservations: TestObservation[] = plan.cases.map((c) => ({
+        caseId: c.caseId,
+        value: c.value,
+        expectedOutcome: c.expectedOutcome,
+        observedFormOutcome: null,
+        observedFeedbackText: null,
+        classification: null,
+        lifecycleState: 'PENDING',
+        durationMs: 0,
+        screenshotId: null,
+        diagnosticDetails: null,
+        executedAt: null,
+      }));
 
-    const snapshot: VerificationRunSnapshot = {
-      runId,
-      planId: plan.planId,
-      startedAt: new Date().toISOString(),
-      completedAt: null,
-      status: 'RUNNING',
-      contract,
-      fixtureMode: plan.fixtureMode,
-      observations: initialObservations,
-      summaryCounts: computeSummaryCounts(initialObservations, plan.cases.length),
-      sampledMismatchSummary: null,
-    };
+      const snapshot: VerificationRunSnapshot = {
+        runId,
+        planId: plan.planId,
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        status: 'RUNNING',
+        contract,
+        fixtureMode: plan.fixtureMode,
+        observations: initialObservations,
+        summaryCounts: computeSummaryCounts(initialObservations, plan.cases.length),
+        sampledMismatchSummary: null,
+      };
 
-    // Save initial active checkpoint
-    await runStore.saveActiveCheckpoint(snapshot);
+      // Lock both stores to the current data directory before any writes
+      runStore.bindRunDir(runId);
+      evidenceStore.bindRunDir(runId);
 
-    // Run execution loop asynchronously
-    this.executeLoop(snapshot, plan, port).finally(() => {
+      // Save initial active checkpoint
+      await runStore.saveActiveCheckpoint(snapshot);
+
+      // Run execution loop asynchronously
+      this.executeLoop(snapshot, plan, port).finally(() => {
+        this.currentActiveRunId = null;
+        cancellationManager.unregisterRun(runId);
+      });
+    } catch (err: unknown) {
+      // Roll back active run lock and unregister cancellation handle on startup failure
       this.currentActiveRunId = null;
       cancellationManager.unregisterRun(runId);
-    });
+      throw err;
+    }
   }
 
   private async executeLoop(
@@ -172,7 +203,17 @@ export class ExecutionRunner {
           total: plan.cases.length,
         });
 
-        const context = await browserPool.createHermeticContext(browser, port);
+        let context: import('playwright').BrowserContext;
+        try {
+          context = await browserPool.createHermeticContext(browser, port);
+        } catch (ctxErr) {
+          if (cancellationManager.isCancelled(runId)) {
+            await this.handleCancellationFinalization(snapshot, i);
+            return;
+          }
+          throw ctxErr;
+        }
+
         if (cancellationManager.isCancelled(runId)) {
           await context.close().catch(() => {});
           await this.handleCancellationFinalization(snapshot, i);
@@ -190,12 +231,19 @@ export class ExecutionRunner {
             const onAbort = () => reject(new Error('Execution cancelled during page creation'));
             abortSignal?.addEventListener('abort', onAbort, { once: true });
 
+            let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+              abortSignal?.removeEventListener('abort', onAbort);
+              reject(new Error('Browser context.newPage() timed out after 10000ms'));
+            }, 10000);
+
             context.newPage().then(
               (p) => {
+                if (timer) clearTimeout(timer);
                 abortSignal?.removeEventListener('abort', onAbort);
                 resolve(p);
               },
               (err) => {
+                if (timer) clearTimeout(timer);
                 abortSignal?.removeEventListener('abort', onAbort);
                 reject(err);
               }
@@ -300,6 +348,7 @@ export class ExecutionRunner {
       await runStore.saveFinalizedRun(snapshot);
       this.emitEvent(runId, 'run_completed', snapshot);
     } catch (err: unknown) {
+      console.error('[ExecutionRunner executeLoop error]:', err);
       snapshot.completedAt = new Date().toISOString();
       snapshot.status = 'FAILED';
       await runStore.saveFinalizedRun(snapshot).catch(() => {});

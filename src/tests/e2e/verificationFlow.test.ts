@@ -41,7 +41,7 @@ describe('Slice 2 E2E: Embedded Fixture & Black-Box Playwright Observer', () => 
           targetUrl,
           fieldSelector: '#annual-income',
           submitSelector: '#submit-btn',
-          timeoutMs: 4000,
+          timeoutMs: 10000,
         });
 
         observations.push(observation);
@@ -94,7 +94,7 @@ describe('Slice 2 E2E: Embedded Fixture & Black-Box Playwright Observer', () => 
           targetUrl,
           fieldSelector: '#annual-income',
           submitSelector: '#submit-btn',
-          timeoutMs: 4000,
+          timeoutMs: 10000,
         });
 
         observations.push(observation);

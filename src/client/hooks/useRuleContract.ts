@@ -16,7 +16,7 @@ export function useRuleContract() {
 
   const [fieldName, setFieldName] = useState<string>('Annual Family Income');
   const [operator, setOperator] = useState<NumericOperator>('<=');
-  const [threshold, setThreshold] = useState<number>(300000);
+  const [threshold, setThreshold] = useState<number | ''>(300000);
   const [unit, setUnit] = useState<string>('INR');
   const [sourceExcerpt, setSourceExcerpt] = useState<string>('');
 
@@ -48,6 +48,27 @@ export function useRuleContract() {
     return matchingLine || lines[0] || '';
   };
 
+  const updateSourceText = (text: string) => {
+    setSourceText(text);
+    setSourceType('pasted_text');
+    setSourceDocumentName('manual-entry.txt');
+    // Invalidate stale sample excerpt or missing excerpts
+    setSourceExcerpt((prevExcerpt) => {
+      if (prevExcerpt && text.includes(prevExcerpt) && prevExcerpt !== SAMPLE_RULE_EXCERPT) {
+        return prevExcerpt;
+      }
+      return extractExcerptFromText(text);
+    });
+    setIsConfirmed(false);
+    setConfirmedContract(null);
+  };
+
+  const updateSourceExcerpt = (excerpt: string) => {
+    setSourceExcerpt(excerpt);
+    setIsConfirmed(false);
+    setConfirmedContract(null);
+  };
+
   const loadPastedFallback = (fileName: string, text: string) => {
     setSourceText(text);
     setSourceDocumentName(fileName);
@@ -72,11 +93,20 @@ export function useRuleContract() {
       throw new Error('A genuine source policy excerpt is required to confirm the rule contract');
     }
 
+    if (threshold === '' || typeof threshold === 'undefined') {
+      throw new Error('Policy threshold value cannot be empty');
+    }
+
+    const numThreshold = Number(threshold);
+    if (isNaN(numThreshold) || !Number.isInteger(numThreshold) || !Number.isSafeInteger(numThreshold) || numThreshold < 0) {
+      throw new Error('Policy threshold value must be a valid, non-negative integer (e.g. 300000)');
+    }
+
     const contract: RuleContract = {
       id: crypto.randomUUID(),
       fieldName: fieldName.trim() || 'Annual Family Income',
       operator,
-      threshold: Number(threshold) || 0,
+      threshold: numThreshold,
       unit: unit.trim() || 'INR',
       sourceExcerpt: cleanExcerpt,
       sourceDocumentName,
@@ -91,11 +121,12 @@ export function useRuleContract() {
 
   const editContract = () => {
     setIsConfirmed(false);
+    setConfirmedContract(null);
   };
 
   return {
     sourceText,
-    setSourceText,
+    setSourceText: updateSourceText,
     sourceDocumentName,
     setSourceDocumentName,
     sourceType,
@@ -109,7 +140,7 @@ export function useRuleContract() {
     unit,
     setUnit,
     sourceExcerpt,
-    setSourceExcerpt,
+    setSourceExcerpt: updateSourceExcerpt,
     isConfirmed,
     confirmedContract,
     loadSamplePolicy,

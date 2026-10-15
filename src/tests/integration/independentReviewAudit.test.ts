@@ -1,19 +1,26 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { vi, describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
 import { createServer } from '../../server/server.js';
 import { planStore } from '../../server/storage/planStore.js';
 import { runStore } from '../../server/storage/runStore.js';
+import { executionRunner } from '../../server/runner/executionRunner.js';
+import { browserPool } from '../../server/runner/browserPool.js';
 import { computeSummaryCounts } from '../../shared/ruleEngine.js';
 import { TestObservation, RuleContract } from '../../shared/contract.js';
 
 describe('Independent Review Audit & Hardening Suite', () => {
   let server: http.Server;
   let serverPort: number;
-  const testDataDir = path.resolve(process.cwd(), '.rulegap-audit-data');
+  const testDataDir = path.join(os.tmpdir(), `rulegap-audit-${Date.now()}`);
+
+  let originalDataDir: string | undefined;
 
   beforeAll(async () => {
+    originalDataDir = process.env.RULEGAP_DATA_DIR;
     process.env.RULEGAP_DATA_DIR = testDataDir;
     fs.mkdirSync(testDataDir, { recursive: true });
 
@@ -28,10 +35,15 @@ describe('Independent Review Audit & Hardening Suite', () => {
   });
 
   afterAll(async () => {
+    await browserPool.close();
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
-    delete process.env.RULEGAP_DATA_DIR;
+    if (originalDataDir !== undefined) {
+      process.env.RULEGAP_DATA_DIR = originalDataDir;
+    } else {
+      delete process.env.RULEGAP_DATA_DIR;
+    }
     fs.rmSync(testDataDir, { recursive: true, force: true });
   });
 
@@ -300,6 +312,66 @@ describe('Independent Review Audit & Hardening Suite', () => {
       const output = receivedEvents.join('\n');
       expect(output).toContain('event: run_cancelled');
     });
+
+    it('dispatches run_completed immediately to a late subscriber without Last-Event-ID', async () => {
+      const runId = '99999999-8888-7777-6666-555555555555';
+      const completedRun = {
+        runId,
+        planId: '11111111-2222-3333-4444-555555555555',
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        status: 'COMPLETED_CONSISTENT' as const,
+        contract: baseContract,
+        fixtureMode: 'corrected' as const,
+        observations: [],
+        summaryCounts: {
+          consistent: 1,
+          confirmedMismatch: 0,
+          inconclusive: 0,
+          executionError: 0,
+          notExecuted: 0,
+          interrupted: 0,
+          totalScheduled: 1,
+        },
+        sampledMismatchSummary: null,
+      };
+
+      await runStore.saveFinalizedRun(completedRun);
+
+      const receivedEvents: string[] = [];
+      await new Promise<void>((resolve, reject) => {
+        const req = http.request(
+          {
+            hostname: '127.0.0.1',
+            port: serverPort,
+            path: `/api/runs/${runId}/events`,
+            method: 'GET',
+            headers: {
+              Accept: 'text/event-stream',
+            },
+          },
+          (res) => {
+            res.on('data', (chunk) => {
+              receivedEvents.push(chunk.toString());
+              if (chunk.toString().includes('run_completed')) {
+                req.destroy();
+                resolve();
+              }
+            });
+            setTimeout(() => {
+              req.destroy();
+              resolve();
+            }, 1500);
+          }
+        );
+        req.on('error', reject);
+        req.end();
+      });
+
+      const allOutput = receivedEvents.join('\n');
+      expect(allOutput).toContain('event: run_completed');
+      expect(allOutput).toContain(runId);
+    });
   });
 
   describe('Summary Counts Lifecycle Accounting Invariants', () => {
@@ -395,5 +467,290 @@ describe('Independent Review Audit & Hardening Suite', () => {
         counts.interrupted;
       expect(sum).toBe(counts.totalScheduled);
     });
+
+    it('MUST NOT count PENDING or RUNNING observations as completed INCONCLUSIVE', () => {
+      const pendingObservations: TestObservation[] = [
+        {
+          caseId: 'case-1',
+          value: 250000,
+          expectedOutcome: 'ACCEPT',
+          observedFormOutcome: null,
+          observedFeedbackText: null,
+          classification: null,
+          lifecycleState: 'PENDING',
+          durationMs: 0,
+          screenshotId: null,
+          diagnosticDetails: null,
+          executedAt: null,
+        },
+        {
+          caseId: 'case-2',
+          value: 300000,
+          expectedOutcome: 'ACCEPT',
+          observedFormOutcome: null,
+          observedFeedbackText: null,
+          classification: null,
+          lifecycleState: 'RUNNING',
+          durationMs: 0,
+          screenshotId: null,
+          diagnosticDetails: null,
+          executedAt: null,
+        },
+      ];
+
+      const counts = computeSummaryCounts(pendingObservations, 2);
+
+      expect(counts.inconclusive).toBe(0);
+      expect(counts.consistent).toBe(0);
+      expect(counts.confirmedMismatch).toBe(0);
+      expect(counts.executionError).toBe(0);
+      expect(counts.notExecuted).toBe(2);
+      expect(
+        counts.consistent +
+          counts.confirmedMismatch +
+          counts.inconclusive +
+          counts.executionError +
+          counts.notExecuted +
+          counts.interrupted
+      ).toBe(2);
+    });
+  });
+
+  describe('Fixture Contract Compatibility Enforcement', () => {
+    it('rejects test plan creation with incompatible currency unit for scholarship fixture', async () => {
+      const invalidContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        unit: 'USD',
+      };
+
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({
+          contract: invalidContract,
+          fixtureId: 'scholarship',
+          fixtureMode: 'inconsistent',
+          targetFieldSelector: '#annual-income',
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('Incompatible unit');
+    });
+
+    it('rejects test plan creation with negative income threshold', async () => {
+      const invalidContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        threshold: -5000,
+      };
+
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({
+          contract: invalidContract,
+          fixtureId: 'scholarship',
+          fixtureMode: 'inconsistent',
+          targetFieldSelector: '#annual-income',
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('negative');
+    });
+
+    it('rejects test plan creation with unrelated field names (e.g., Student Age, GPA, Credit Score)', async () => {
+      const unrelatedFields = ['Student Age', 'GPA', 'Credit Score', 'Attendance Percentage', 'Grade Point Average'];
+
+      for (const fieldName of unrelatedFields) {
+        const invalidContract: RuleContract = {
+          ...baseContract,
+          id: crypto.randomUUID(),
+          fieldName,
+        };
+
+        const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RuleGap-Client': 'true',
+          },
+          body: JSON.stringify({
+            contract: invalidContract,
+            fixtureId: 'scholarship',
+            fixtureMode: 'inconsistent',
+            targetFieldSelector: '#annual-income',
+          }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data.error).toContain('Incompatible field');
+      }
+    });
+
+    it('accepts deliberate, unambiguous income aliases for scholarship fixture', async () => {
+      const validAliases = [
+        'Annual Family Income',
+        'family income',
+        'annual income',
+        'Household Income',
+        'annual household income',
+        'income',
+        'Annual Family Income (INR)',
+      ];
+
+      for (const fieldName of validAliases) {
+        const validContract: RuleContract = {
+          ...baseContract,
+          id: crypto.randomUUID(),
+          fieldName,
+        };
+
+        const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RuleGap-Client': 'true',
+          },
+          body: JSON.stringify({
+            contract: validContract,
+            fixtureId: 'scholarship',
+            fixtureMode: 'inconsistent',
+            targetFieldSelector: '#annual-income',
+          }),
+        });
+
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        expect(data.planId).toBeDefined();
+      }
+    });
+
+    it('rejects approval of a plan if contract field name is unrelated to scholarship fixture', async () => {
+      // Create a plan record directly in planStore simulating a tampered or bypassed plan
+      const tamperedContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        fieldName: 'Student Age',
+      };
+      const rawPlan = await planStore.createPlan({
+        contract: tamperedContract,
+        fixtureId: 'scholarship',
+        fixtureMode: 'inconsistent',
+        targetFieldSelector: '#annual-income',
+      });
+
+      // Attempt to approve via API
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans/${rawPlan.planId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('incompatible');
+    });
+
+    it('rejects execution start-run if approved plan has an incompatible field', async () => {
+      // Force an approved plan with incompatible field in planStore
+      const tamperedContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        fieldName: 'GPA',
+      };
+      const rawPlan = await planStore.createPlan({
+        contract: tamperedContract,
+        fixtureId: 'scholarship',
+        fixtureMode: 'inconsistent',
+        targetFieldSelector: '#annual-income',
+      });
+      // Force approval state directly in store
+      rawPlan.isApproved = true;
+      rawPlan.approvedAt = new Date().toISOString();
+
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({ planId: rawPlan.planId }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('incompatible');
+    });
+
+    it('rolls back runner lock and cancellation handle if initial checkpoint fails, allowing subsequent run to start', async () => {
+      while (executionRunner.isRunActive()) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      const planId = await createAndApprovePlan();
+
+      // Fault injection: mock saveActiveCheckpoint to fail on startup
+      const checkpointSpy = vi.spyOn(runStore, 'saveActiveCheckpoint').mockRejectedValueOnce(
+        new Error('Disk I/O error writing initial active checkpoint')
+      );
+
+      // Attempt to start run - must fail with 500 server error
+      const failedRes = await fetch(`http://127.0.0.1:${serverPort}/api/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      expect(failedRes.status).toBe(500);
+      const errData = await failedRes.json();
+      expect(errData.error).toContain('Disk I/O error');
+
+      // Crucial verification: runner lock MUST NOT be active
+      expect(executionRunner.isRunActive()).toBe(false);
+
+      // Verify that a subsequent valid run can start immediately without concurrency lock error
+      checkpointSpy.mockRestore();
+
+      const successRes = await fetch(`http://127.0.0.1:${serverPort}/api/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      expect(successRes.status).toBe(201);
+      const successData = await successRes.json();
+      expect(successData.runId).toBeDefined();
+      expect(successData.status).toBe('RUNNING');
+
+      // Cancel the run immediately so background browser processes do not contend with other tests
+      await fetch(`http://127.0.0.1:${serverPort}/api/runs/${successData.runId}/cancel`, {
+        method: 'POST',
+        headers: { 'X-RuleGap-Client': 'true' },
+      });
+
+      while (executionRunner.isRunActive()) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    }, 15000);
   });
 });

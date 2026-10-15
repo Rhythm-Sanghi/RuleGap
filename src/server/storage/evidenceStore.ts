@@ -3,11 +3,31 @@ import path from 'path';
 import { SERVER_CONFIG } from '../config.js';
 
 export class EvidenceStore {
-  private baseDir: string;
+  private customBaseDir?: string;
+  private boundRunDirs: Map<string, string> = new Map();
 
-  constructor(baseDir: string = SERVER_CONFIG.evidenceStorageDir) {
-    this.baseDir = baseDir;
-    fs.mkdirSync(this.baseDir, { recursive: true });
+  constructor(baseDir?: string) {
+    this.customBaseDir = baseDir;
+  }
+
+  get baseDir(): string {
+    const dir = this.customBaseDir || SERVER_CONFIG.evidenceStorageDir;
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
+  }
+
+  /**
+   * Locks the evidence directory for a specific runId so that environment changes
+   * mid-run cannot redirect screenshot storage or lookups across split directories.
+   */
+  bindRunDir(runId: string, dir?: string): string {
+    const resolved = dir || this.baseDir;
+    this.boundRunDirs.set(runId, resolved);
+    return resolved;
+  }
+
+  getDirForRun(runId: string): string {
+    return this.boundRunDirs.get(runId) || this.baseDir;
   }
 
   /**
@@ -22,7 +42,8 @@ export class EvidenceStore {
       throw new Error(`Invalid runId for evidence storage: ${runId}`);
     }
 
-    const runEvidenceDir = path.join(this.baseDir, runId);
+    const dir = this.boundRunDirs.get(runId) || this.bindRunDir(runId);
+    const runEvidenceDir = path.join(dir, runId);
     await fs.promises.mkdir(runEvidenceDir, { recursive: true });
 
     const filename = `${caseId}.png`;
@@ -49,12 +70,20 @@ export class EvidenceStore {
       return null;
     }
 
-    const filePath = path.join(this.baseDir, runId, `${caseId}.png`);
-    try {
-      return await fs.promises.readFile(filePath);
-    } catch {
-      return null;
+    const searchDirs = new Set<string>();
+    const bound = this.boundRunDirs.get(runId);
+    if (bound) searchDirs.add(bound);
+    searchDirs.add(this.baseDir);
+
+    for (const dir of searchDirs) {
+      const filePath = path.join(dir, runId, `${caseId}.png`);
+      try {
+        return await fs.promises.readFile(filePath);
+      } catch {
+        // continue checking next directory
+      }
     }
+    return null;
   }
 }
 

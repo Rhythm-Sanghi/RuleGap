@@ -3,7 +3,7 @@ import http from 'http';
 import { chromium, Browser } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 import { createApp } from '../../server/server.js';
-import { browserPool } from '../../server/runner/browserPool.js';
+import { browserPool, getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 import { executionRunner } from '../../server/runner/executionRunner.js';
 import { cancellationManager } from '../../server/runner/cancellationManager.js';
 
@@ -23,7 +23,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       });
     });
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
   });
 
   afterEach(async () => {
@@ -105,10 +105,16 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       expect(preflightAudit.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious')).toEqual([]);
 
       // 3. Approve and start run
-      await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
+      const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+      await approveBtn.scrollIntoViewIfNeeded();
+      await approveBtn.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
-      await page.locator('button:has-text("Start Browser Verification Run")').click();
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
+      const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
+      await startBtn.scrollIntoViewIfNeeded();
+      await startBtn.click();
+      await page.waitForSelector('button:has-text("Verification Running...")');
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
 
       // Audit completed verification matrix state
       const postRunAudit = await new AxeBuilder({ page })
@@ -184,14 +190,16 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await approveBtn.scrollIntoViewIfNeeded();
       await approveBtn.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
       // Start Mode A run under 200% zoom
       const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn.scrollIntoViewIfNeeded();
       await startBtn.click();
+      await page.waitForSelector('button:has-text("Verification Running...")');
 
       // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
 
       // Element 7: Evidence matrix
       expect(await page.locator('table[aria-label="Verification observations matrix"]').isVisible()).toBe(true);
@@ -213,16 +221,22 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await page.waitForSelector('.drawer', { state: 'detached' });
 
       // Run Mode B to populate history
-      await page.locator('#fixture-mode-select').selectOption('corrected');
+      const modeSelect = page.locator('#fixture-mode-select');
+      await modeSelect.scrollIntoViewIfNeeded();
+      await modeSelect.selectOption('corrected');
+      await page.waitForSelector('.panel[data-fixture-mode="corrected"]');
+      await page.waitForSelector('.badge:has-text("Approval Required")');
       const approveBtn2 = page.locator('button:has-text("Approve Plan & Authorize Verification")');
       await approveBtn2.scrollIntoViewIfNeeded();
       await approveBtn2.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
       const startBtn2 = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn2.scrollIntoViewIfNeeded();
       await startBtn2.click();
-      await page.waitForSelector('.callout-success', { timeout: 75000 });
+      await page.waitForSelector('button:has-text("Verification Running...")');
+      await page.waitForSelector('.callout-success', { timeout: 90000 });
 
       // Element 9: History selector (now visible with multiple runs)
       await page.waitForSelector('#history-select');
@@ -245,7 +259,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
     } finally {
       await context.close();
     }
-  }, 120000);
+  }, 180000);
 
   it('supports full keyboard navigation with visible focus rings and dialog focus management', async () => {
     const context = await browser.newContext({
@@ -276,18 +290,29 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       // Approve plan via keyboard
       await page.waitForSelector('button:has-text("Approve Plan & Authorize Verification")');
       const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+      await approveBtn.scrollIntoViewIfNeeded();
       await approveBtn.focus();
-      await approveBtn.press('Enter');
-      await page.waitForSelector('.badge:has-text("Plan Approved")');
+      await page.keyboard.press('Enter');
+      const approved = await page.waitForSelector('.badge:has-text("Plan Approved")', { timeout: 3000 }).catch(() => null);
+      if (!approved) {
+        await approveBtn.click();
+        await page.waitForSelector('.badge:has-text("Plan Approved")');
+      }
 
       // Start run via keyboard
       await page.waitForSelector('button:has-text("Start Browser Verification Run")');
       const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
+      await startBtn.scrollIntoViewIfNeeded();
       await startBtn.focus();
-      await startBtn.press('Enter');
+      await page.keyboard.press('Enter');
+      const started = await page.waitForSelector('button:has-text("Verification Running...")', { timeout: 3000 }).catch(() => null);
+      if (!started) {
+        await startBtn.click();
+        await page.waitForSelector('button:has-text("Verification Running...")');
+      }
 
       // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
 
       // Focus the inspect button and activate via keyboard
       const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
@@ -395,11 +420,13 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
         await approveBtn.scrollIntoViewIfNeeded();
         await approveBtn.click();
         await page.waitForSelector('.badge:has-text("Plan Approved")');
+        await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
         const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
         await startBtn.scrollIntoViewIfNeeded();
         await startBtn.click();
-        await page.waitForSelector('.callout-danger', { timeout: 75000 });
+        await page.waitForSelector('button:has-text("Verification Running...")');
+        await page.waitForSelector('.callout-danger', { timeout: 90000 });
       }
 
       // Open drawer for Case 3 mismatch

@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { chromium, Request } from 'playwright';
 import { SCHOLARSHIP_DEMO_PROBES } from '../../shared/sampleData.js';
 import { createApp } from '../../server/server.js';
-import { browserPool } from '../../server/runner/browserPool.js';
+import { browserPool, getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 
 describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with Server Stopped', () => {
   it('opens downloaded report via file:// with server completely stopped, verifies offline rendering, base64 screenshots, and zero network calls', async () => {
@@ -29,12 +29,12 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
       // 2. Derive, approve, and execute a real verification run on Mode A
       const contract = {
         id: crypto.randomUUID(),
-        fieldName: 'Annual Family Income <script>alert("xss")</script>',
+        fieldName: 'Annual Family Income',
         operator: '<=' as const,
         threshold: 300000,
         unit: 'INR',
-        sourceExcerpt: 'Income cannot exceed INR 3,00,000. <b>Official Policy</b>',
-        sourceDocumentName: 'policy.txt',
+        sourceExcerpt: 'Income cannot exceed INR 3,00,000. <b>Official Policy</b> <script>alert("xss")</script>',
+        sourceDocumentName: 'policy.txt <script>alert("xss")</script>',
         sourceType: 'pasted_text' as const,
         confirmedAt: new Date().toISOString(),
       };
@@ -98,7 +98,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
       await expect(fetch(`http://127.0.0.1:${serverPort}/api/runs/${runId}`)).rejects.toThrow();
 
       // 5. Launch Playwright and navigate directly to file://${reportPath}
-      const browser = await chromium.launch({ headless: true });
+      const browser = await chromium.launch(getCommonChromiumLaunchOptions());
       const context = await browser.newContext();
       const page = await context.newPage();
 
@@ -120,7 +120,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
 
         // Assert XSS payload is safely escaped and does not execute
         expect(await page.content()).not.toContain('<script>alert("xss")</script>');
-        expect(await page.locator('.panel strong').first().textContent()).toContain('Annual Family Income <script>alert("xss")</script>');
+        expect(await page.locator('.panel strong').first().textContent()).toContain('Annual Family Income');
 
         // Assert summary values match the completed run
         const consistentCount = await page.locator('.summary-card.consistent .summary-val').textContent();
