@@ -15,6 +15,14 @@ import { SERVER_CONFIG } from '../config.js';
 
 export const runsRouter = Router();
 
+// Disable caching for all runs API endpoints to ensure fresh status updates
+runsRouter.use('/api/runs', (_req: Request, res: Response, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 const StartRunBodySchema = z.object({
   planId: z.string().uuid(),
   contract: RuleContractSchema.optional(),
@@ -127,14 +135,6 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
     const errorMsg = err instanceof Error ? err.message : String(err);
     res.status(400).json({ error: errorMsg });
   }
-});
-
-// Disable caching for all runs API endpoints to ensure fresh status updates
-runsRouter.use('/api/runs', (_req: Request, res: Response, next) => {
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  next();
 });
 
 // List historical runs

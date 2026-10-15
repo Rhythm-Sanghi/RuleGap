@@ -132,14 +132,21 @@ export function useVerificationRun() {
           const { caseId } = JSON.parse(event.data);
           setActiveRunSnapshot((prev) => {
             if (!prev) return prev;
-            const updated = {
+            return {
               ...prev,
               observations: prev.observations.map((obs) =>
                 obs.caseId === caseId ? { ...obs, lifecycleState: 'RUNNING' as const } : obs
               ),
             };
-            setSelectedRunSnapshot(updated);
-            return updated;
+          });
+          setSelectedRunSnapshot((prev) => {
+            if (!prev || prev.runId !== runId) return prev;
+            return {
+              ...prev,
+              observations: prev.observations.map((obs) =>
+                obs.caseId === caseId ? { ...obs, lifecycleState: 'RUNNING' as const } : obs
+              ),
+            };
           });
         });
 
@@ -147,15 +154,23 @@ export function useVerificationRun() {
           const { observation, summaryCounts } = JSON.parse(event.data);
           setActiveRunSnapshot((prev) => {
             if (!prev) return prev;
-            const updated = {
+            return {
               ...prev,
               observations: prev.observations.map((obs) =>
                 obs.caseId === observation.caseId ? observation : obs
               ),
               summaryCounts,
             };
-            setSelectedRunSnapshot(updated);
-            return updated;
+          });
+          setSelectedRunSnapshot((prev) => {
+            if (!prev || prev.runId !== runId) return prev;
+            return {
+              ...prev,
+              observations: prev.observations.map((obs) =>
+                obs.caseId === observation.caseId ? observation : obs
+              ),
+              summaryCounts,
+            };
           });
         });
 

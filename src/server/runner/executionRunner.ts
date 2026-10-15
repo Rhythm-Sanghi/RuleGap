@@ -231,12 +231,19 @@ export class ExecutionRunner {
             const onAbort = () => reject(new Error('Execution cancelled during page creation'));
             abortSignal?.addEventListener('abort', onAbort, { once: true });
 
+            let timer: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+              abortSignal?.removeEventListener('abort', onAbort);
+              reject(new Error('Browser context.newPage() timed out after 10000ms'));
+            }, 10000);
+
             context.newPage().then(
               (p) => {
+                if (timer) clearTimeout(timer);
                 abortSignal?.removeEventListener('abort', onAbort);
                 resolve(p);
               },
               (err) => {
+                if (timer) clearTimeout(timer);
                 abortSignal?.removeEventListener('abort', onAbort);
                 reject(err);
               }

@@ -1,7 +1,14 @@
 import { chromium, type Browser, type BrowserContext } from 'playwright';
 
 export function getCommonChromiumLaunchOptions() {
-  const launchArgs: string[] = ['--disable-dev-shm-usage', '--disable-gpu'];
+  const launchArgs: string[] = [
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-background-networking',
+    '--disable-default-apps',
+    '--no-first-run',
+    '--no-default-browser-check',
+  ];
 
   // Documented Sandbox Exception:
   // Linux CI container runners (e.g. GitHub Actions ubuntu-latest / Docker) lack
