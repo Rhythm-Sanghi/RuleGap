@@ -1,5 +1,6 @@
 import React from 'react';
 import { VerificationRunSnapshot, TestObservation } from '../../shared/contract.js';
+import { formatValueWithUnit } from '../../shared/ruleEngine.js';
 
 interface EvidenceMatrixProps {
   snapshot: VerificationRunSnapshot | null;
@@ -31,7 +32,7 @@ export const EvidenceMatrix: React.FC<EvidenceMatrixProps> = ({
     );
   }
 
-  const { observations, runId, status, fixtureMode } = snapshot;
+  const { observations, runId, status, fixtureMode, contract } = snapshot;
 
   const renderClassificationBadge = (obs: TestObservation) => {
     if (obs.lifecycleState === 'PENDING') {
@@ -98,7 +99,7 @@ export const EvidenceMatrix: React.FC<EvidenceMatrixProps> = ({
             <thead>
               <tr>
                 <th scope="col" style={{ width: '80px' }}>Case</th>
-                <th scope="col" style={{ minWidth: '130px' }}>Test Value (INR)</th>
+                <th scope="col" style={{ minWidth: '130px' }}>Test Value ({contract?.unit || 'Value'})</th>
                 <th scope="col" style={{ minWidth: '130px' }}>Policy Expectation</th>
                 <th scope="col" style={{ minWidth: '150px' }}>Observed Outcome</th>
                 <th scope="col" style={{ minWidth: '140px' }}>Classification</th>
@@ -116,7 +117,7 @@ export const EvidenceMatrix: React.FC<EvidenceMatrixProps> = ({
                       #{index + 1}
                     </td>
                     <td className="mono" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
-                      ₹{obs.value.toLocaleString('en-IN')}
+                      {formatValueWithUnit(obs.value, contract.unit)}
                     </td>
                     <td>
                       <span
@@ -164,7 +165,7 @@ export const EvidenceMatrix: React.FC<EvidenceMatrixProps> = ({
                         style={{ minHeight: 30, padding: '2px 10px', fontSize: '0.78rem' }}
                         onClick={() => onSelectObservation(obs)}
                         disabled={obs.lifecycleState === 'PENDING' || obs.lifecycleState === 'RUNNING' || obs.lifecycleState === 'NOT_EXECUTED'}
-                        aria-label={`Inspect Case ${index + 1}: ₹${obs.value}`}
+                        aria-label={`Inspect Case ${index + 1}: ${formatValueWithUnit(obs.value, contract.unit)}`}
                       >
                         Inspect
                       </button>

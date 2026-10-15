@@ -1,5 +1,6 @@
 import React from 'react';
 import { VerificationRunSnapshot } from '../../shared/contract.js';
+import { formatValueWithUnit } from '../../shared/ruleEngine.js';
 
 interface SummaryBarProps {
   snapshot: VerificationRunSnapshot | null;
@@ -12,6 +13,19 @@ export const SummaryBar: React.FC<SummaryBarProps> = ({ snapshot, isRunning }) =
   }
 
   const { summaryCounts, status, sampledMismatchSummary, fixtureMode } = snapshot;
+
+  const hasPermittedRejected = snapshot.observations.some(
+    (o) => o.classification === 'CONFIRMED_MISMATCH' && o.expectedOutcome === 'ACCEPT' && o.observedFormOutcome === 'REJECTED'
+  );
+  const hasProhibitedAccepted = snapshot.observations.some(
+    (o) => o.classification === 'CONFIRMED_MISMATCH' && o.expectedOutcome === 'REJECT' && o.observedFormOutcome === 'ACCEPTED'
+  );
+  const mismatchDirectionDescription =
+    hasPermittedRejected && hasProhibitedAccepted
+      ? 'Contradictions detected between published policy rules and form submissions in both directions.'
+      : hasProhibitedAccepted
+      ? 'The application form accepted inputs that the documented policy explicitly prohibits.'
+      : 'The documented policy explicitly permits these inputs, but the application form rejected them.';
   const completedCount =
     summaryCounts.consistent +
     summaryCounts.confirmedMismatch +
@@ -47,10 +61,10 @@ export const SummaryBar: React.FC<SummaryBarProps> = ({ snapshot, isRunning }) =
               </div>
               <p className="verdict-detail">
                 <strong>Confirmed Policy Mismatches Detected: </strong>
-                The documented policy explicitly permits these incomes, but the application form rejected them.
-                Discrepancies were confirmed at tested values between{' '}
-                <span className="mono" style={{ fontWeight: 600 }}>₹{sampledMismatchSummary?.lowestMismatchValue?.toLocaleString('en-IN')}</span> and{' '}
-                <span className="mono" style={{ fontWeight: 600 }}>₹{sampledMismatchSummary?.highestMismatchValue?.toLocaleString('en-IN')}</span>.
+                {mismatchDirectionDescription}
+                {' '}Discrepancies were confirmed at tested values between{' '}
+                <span className="mono" style={{ fontWeight: 600 }}>{formatValueWithUnit(sampledMismatchSummary?.lowestMismatchValue ?? 0, snapshot.contract.unit)}</span> and{' '}
+                <span className="mono" style={{ fontWeight: 600 }}>{formatValueWithUnit(sampledMismatchSummary?.highestMismatchValue ?? 0, snapshot.contract.unit)}</span>.
               </p>
               <div className="sampling-disclaimer">
                 {sampledMismatchSummary?.disclaimer || 'Empirical verification across discrete boundary probes. Finite sampling does not guarantee continuous interval behavior.'}

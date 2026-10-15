@@ -1,4 +1,5 @@
 import { VerificationRunSnapshot, TestObservation } from '../../shared/contract.js';
+import { formatValueWithUnit } from '../../shared/ruleEngine.js';
 import { evidenceStore } from '../storage/evidenceStore.js';
 
 export function escapeHtml(str: string | null | undefined): string {
@@ -69,7 +70,7 @@ export async function generateHtmlEvidenceReport(snapshot: VerificationRunSnapsh
 
       return `
       <tr class="${isMismatch ? 'mismatch-row' : ''}">
-        <td class="mono font-bold">₹${obs.value.toLocaleString('en-IN')}</td>
+        <td class="mono font-bold">${escapeHtml(formatValueWithUnit(obs.value, contract.unit))}</td>
         <td>
           <span class="badge ${obs.expectedOutcome === 'ACCEPT' ? 'badge-consistent' : 'badge-error'}">
             ${escapeHtml(obs.expectedOutcome)}
@@ -97,7 +98,7 @@ export async function generateHtmlEvidenceReport(snapshot: VerificationRunSnapsh
               ? `<details>
                   <summary class="view-evidence-btn">View Capture</summary>
                   <div class="screenshot-container">
-                    <img src="${screenshot}" alt="Observation capture for ₹${obs.value}" class="screenshot-img" />
+                    <img src="${screenshot}" alt="Observation capture for ${escapeHtml(formatValueWithUnit(obs.value, contract.unit))}" class="screenshot-img" />
                   </div>
                 </details>`
               : '<span class="text-muted">None</span>'
@@ -214,7 +215,7 @@ export async function generateHtmlEvidenceReport(snapshot: VerificationRunSnapsh
       <div class="meta-grid" style="border-top: none; padding-top: 0;">
         <div><span class="text-muted">Target Field:</span> <strong>${escapeHtml(contract.fieldName)}</strong></div>
         <div><span class="text-muted">Operator:</span> <strong class="mono">${escapeHtml(contract.operator)}</strong></div>
-        <div><span class="text-muted">Threshold:</span> <strong class="mono">₹${contract.threshold.toLocaleString('en-IN')}</strong> (${escapeHtml(contract.unit)})</div>
+        <div><span class="text-muted">Threshold:</span> <strong class="mono">${escapeHtml(formatValueWithUnit(contract.threshold, contract.unit))}</strong> (${escapeHtml(contract.unit)})</div>
         <div><span class="text-muted">Source Document:</span> <span>${escapeHtml(contract.sourceDocumentName)}</span></div>
         <div><span class="text-muted">Confirmed At:</span> <span>${escapeHtml(contract.confirmedAt)}</span></div>
       </div>
@@ -244,10 +245,17 @@ export async function generateHtmlEvidenceReport(snapshot: VerificationRunSnapsh
       ${
         status === 'COMPLETED_MISMATCHES' && sampledMismatchSummary
           ? `<div class="callout callout-danger">
-              <strong>Confirmed Policy Mismatches Detected:</strong> The form rejected inputs that the documented policy explicitly allows.
+              <strong>Confirmed Policy Mismatches Detected:</strong> ${
+                observations.some(o => o.classification === 'CONFIRMED_MISMATCH' && o.expectedOutcome === 'ACCEPT' && o.observedFormOutcome === 'REJECTED') &&
+                observations.some(o => o.classification === 'CONFIRMED_MISMATCH' && o.expectedOutcome === 'REJECT' && o.observedFormOutcome === 'ACCEPTED')
+                  ? 'Contradictions detected between published policy rules and live form submissions in both directions.'
+                  : observations.some(o => o.classification === 'CONFIRMED_MISMATCH' && o.expectedOutcome === 'REJECT')
+                  ? 'The form accepted inputs that the documented policy explicitly prohibits.'
+                  : 'The form rejected inputs that the documented policy explicitly permits.'
+              }
               Discrepancies were confirmed at tested values between 
-              <span class="mono font-bold">₹${sampledMismatchSummary.lowestMismatchValue?.toLocaleString('en-IN')}</span> and 
-              <span class="mono font-bold">₹${sampledMismatchSummary.highestMismatchValue?.toLocaleString('en-IN')}</span>.
+              <span class="mono font-bold">${escapeHtml(formatValueWithUnit(sampledMismatchSummary.lowestMismatchValue ?? 0, contract.unit))}</span> and 
+              <span class="mono font-bold">${escapeHtml(formatValueWithUnit(sampledMismatchSummary.highestMismatchValue ?? 0, contract.unit))}</span>.
               <p style="margin-top: 6px; font-size: 0.8rem; color: #7f1d1d;">${escapeHtml(sampledMismatchSummary.disclaimer)}</p>
             </div>`
           : status === 'COMPLETED_CONSISTENT'
@@ -266,7 +274,7 @@ export async function generateHtmlEvidenceReport(snapshot: VerificationRunSnapsh
       <table>
         <thead>
           <tr>
-            <th>Test Value</th>
+            <th>Test Value (${escapeHtml(contract.unit)})</th>
             <th>Policy Expectation</th>
             <th>Observed Outcome</th>
             <th>Classification</th>

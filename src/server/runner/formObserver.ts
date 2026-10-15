@@ -115,12 +115,21 @@ export async function observeFormSubmission(
         .then(() => 'UNRELATED_ERROR' as const),
     ]).catch(() => 'TIMEOUT' as const);
 
-    if (result === 'ACCEPTED') {
-      observedOutcome = 'ACCEPTED';
-      feedbackText = (await acceptedLocator.textContent())?.trim() ?? 'Application accepted';
-    } else if (result === 'FIELD_ERROR') {
-      observedOutcome = 'REJECTED';
-      feedbackText = (await fieldErrorLocator.textContent())?.trim() ?? 'Form rejected';
+    if (result === 'ACCEPTED' || result === 'FIELD_ERROR') {
+      const isAcceptedVisible = await acceptedLocator.isVisible().catch(() => false);
+      const isErrorVisible = await fieldErrorLocator.isVisible().catch(() => false);
+
+      if (isAcceptedVisible && isErrorVisible) {
+        observedOutcome = 'INDETERMINATE';
+        feedbackText = 'Conflicting indicators: both accepted and field error visible in DOM';
+        diagnosticDetails = 'Form exhibited contradictory visual state: both acceptance and rejection indicators are concurrently visible';
+      } else if (result === 'ACCEPTED') {
+        observedOutcome = 'ACCEPTED';
+        feedbackText = (await acceptedLocator.textContent())?.trim() ?? 'Application accepted';
+      } else {
+        observedOutcome = 'REJECTED';
+        feedbackText = (await fieldErrorLocator.textContent())?.trim() ?? 'Form rejected';
+      }
     } else if (result === 'UNRELATED_ERROR') {
       observedOutcome = 'INDETERMINATE';
       feedbackText = (await unrelatedErrorLocator.textContent())?.trim() ?? 'Unrelated validation error';

@@ -48,7 +48,7 @@ This trace maps directly to `prd.md > The Core Journey`:
 - **Schema & Validation:** Zod (shared between client and server)
 - **Browser Automation:** Playwright Chromium (hermetic browser contexts and route blocking)
 - **Document Processing:** PDF.js (`pdfjs-dist`, client-side execution)
-- **Testing:** Vitest (unit & integration) + Playwright Test Runner (E2E)
+- **Testing:** Vitest (unit & integration test runner) + Playwright (E2E browser automation)
 - **Styling:** CSS variables & modular CSS utility classes (no external UI framework, zero Tailwind bloat)
 
 ---

@@ -34,28 +34,19 @@ export const FixtureControl: React.FC<FixtureControlProps> = ({
       </div>
 
       <div className="panel-body">
-        <div className="form-group">
-          <label htmlFor="target-form-select" className="form-label">
-            Target Form Interface (Synthetic Fixture)
-          </label>
-          <select id="target-form-select" className="form-select" disabled>
-            <option value="scholarship">
-              Synthetic Scholarship Application Form (/fixtures/scholarship)
-            </option>
-          </select>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="target-field-selector" className="form-label">
-            Target Input Field Selector
-          </label>
-          <input
-            id="target-field-selector"
-            type="text"
-            className="form-control mono"
-            value="#annual-income"
-            disabled
-          />
+        <div style={{ backgroundColor: 'var(--bg-subtle)', border: '1px solid var(--border-main)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Target Environment
+            </span>
+            <span className="badge badge-neutral" style={{ fontSize: '0.7rem' }}>Synthetic Only</span>
+          </div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', marginBottom: 4 }}>
+            <strong>Portal: </strong>Synthetic Scholarship Application (<code>/fixtures/scholarship</code>)
+          </div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+            <strong>Input Field: </strong><code className="mono">#annual-income</code> (Annual Family Income in INR)
+          </div>
         </div>
 
         <div className="form-group" style={{ marginBottom: 0 }}>

@@ -9,6 +9,11 @@ export default defineConfig({
     outDir: '../../dist/client',
     emptyOutDir: true,
   },
+  css: {
+    postcss: {
+      plugins: [],
+    },
+  },
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, './src/shared'),

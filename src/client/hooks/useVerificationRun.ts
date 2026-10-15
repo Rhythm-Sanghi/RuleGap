@@ -48,6 +48,7 @@ export function useVerificationRun() {
       if (res.ok) {
         const snapshot: VerificationRunSnapshot = await res.json();
         setSelectedRunSnapshot(snapshot);
+        setSelectedObservation(null);
       }
     } catch (err) {
       console.warn('Failed to fetch run snapshot:', err);
@@ -60,6 +61,7 @@ export function useVerificationRun() {
       setIsRunning(true);
       setIsCancelling(false);
       setRunError(null);
+      setSelectedObservation(null);
 
       try {
         const res = await fetch('/api/runs', {
@@ -157,7 +159,19 @@ export function useVerificationRun() {
           });
         });
 
+        let pollTimer: ReturnType<typeof setTimeout> | null = null;
+        let isStreamActive = true;
+
+        const stopPolling = () => {
+          isStreamActive = false;
+          if (pollTimer) {
+            clearTimeout(pollTimer);
+            pollTimer = null;
+          }
+        };
+
         sse.addEventListener('run_completed', (event: MessageEvent) => {
+          stopPolling();
           const finalSnapshot: VerificationRunSnapshot = JSON.parse(event.data);
           setActiveRunSnapshot(finalSnapshot);
           setSelectedRunSnapshot(finalSnapshot);
@@ -171,6 +185,7 @@ export function useVerificationRun() {
         });
 
         sse.addEventListener('run_cancelled', (event: MessageEvent) => {
+          stopPolling();
           const cancelledSnapshot: VerificationRunSnapshot = JSON.parse(event.data);
           setActiveRunSnapshot(cancelledSnapshot);
           setSelectedRunSnapshot(cancelledSnapshot);
@@ -185,6 +200,7 @@ export function useVerificationRun() {
         });
 
         sse.addEventListener('run_failed', (event: MessageEvent) => {
+          stopPolling();
           const { error, snapshot } = JSON.parse(event.data);
           setRunError(error || 'Verification run encountered a fatal error');
           if (snapshot) {
@@ -200,25 +216,42 @@ export function useVerificationRun() {
           fetchRunHistory();
         });
 
-        sse.onerror = () => {
-          // Polling fallback if SSE connection is dropped or ends
+        const pollStatus = () => {
+          if (!isStreamActive) return;
           fetch(`/api/runs/${runId}`)
             .then((r) => (r.ok ? r.json() : null))
             .then((data: VerificationRunSnapshot | null) => {
-              if (data && data.status !== 'RUNNING' && data.status !== 'QUEUED') {
+              if (!isStreamActive) return;
+              if (data) {
                 setActiveRunSnapshot(data);
                 setSelectedRunSnapshot(data);
-                setHistoricalRuns((prev) => {
-                  const filtered = prev.filter((r) => r.runId !== data.runId);
-                  return [data, ...filtered];
-                });
-                setIsRunning(false);
-                setIsCancelling(false);
-                sse.close();
-                fetchRunHistory();
+                if (data.status !== 'RUNNING' && data.status !== 'QUEUED') {
+                  stopPolling();
+                  setHistoricalRuns((prev) => {
+                    const filtered = prev.filter((r) => r.runId !== data.runId);
+                    return [data, ...filtered];
+                  });
+                  setIsRunning(false);
+                  setIsCancelling(false);
+                  sse.close();
+                  fetchRunHistory();
+                  return;
+                }
               }
+              pollTimer = setTimeout(pollStatus, 1200);
             })
-            .catch(() => {});
+            .catch(() => {
+              if (isStreamActive) {
+                pollTimer = setTimeout(pollStatus, 2000);
+              }
+            });
+        };
+
+        sse.onerror = () => {
+          // Polling fallback if SSE connection is dropped or interrupted
+          if (!pollTimer && isStreamActive) {
+            pollStatus();
+          }
         };
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -232,19 +265,37 @@ export function useVerificationRun() {
   const cancelRun = useCallback(async () => {
     if (!activeRunSnapshot || !isRunning) return;
     setIsCancelling(true);
+    setRunError(null);
 
     try {
-      await fetch(`/api/runs/${activeRunSnapshot.runId}/cancel`, {
+      const res = await fetch(`/api/runs/${activeRunSnapshot.runId}/cancel`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-RuleGap-Client': 'true',
         },
       });
-    } catch (err) {
-      console.warn('Cancellation request error:', err);
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Cancellation request rejected (${res.status})`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setRunError(`Failed to cancel verification run: ${msg}`);
+      setIsCancelling(false);
     }
   }, [activeRunSnapshot, isRunning]);
+
+  // Keep selected observation synchronized with latest snapshot updates
+  useEffect(() => {
+    if (selectedObservation && selectedRunSnapshot) {
+      const matching = selectedRunSnapshot.observations.find((o) => o.caseId === selectedObservation.caseId);
+      if (matching) {
+        setSelectedObservation(matching);
+      }
+    }
+  }, [selectedRunSnapshot]);
 
   return {
     activeRunSnapshot,

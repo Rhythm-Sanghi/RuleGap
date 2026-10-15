@@ -65,8 +65,11 @@ export class ExecutionRunner {
   }
 
   public emitEvent(runId: string, type: SseEvent['type'], data: unknown): void {
-
     if (!this.eventBuffers.has(runId)) {
+      if (this.eventBuffers.size >= 20) {
+        const oldestKey = this.eventBuffers.keys().next().value;
+        if (oldestKey) this.eventBuffers.delete(oldestKey);
+      }
       this.eventBuffers.set(runId, []);
     }
     const buffer = this.eventBuffers.get(runId)!;
@@ -87,6 +90,22 @@ export class ExecutionRunner {
         } catch {
           // ignore closed connections
         }
+      }
+    }
+
+    if (type === 'run_completed' || type === 'run_cancelled' || type === 'run_failed') {
+      const currentSubs = this.subscribers.get(runId);
+      if (currentSubs) {
+        setTimeout(() => {
+          for (const res of currentSubs) {
+            try {
+              res.end();
+            } catch {
+              // ignore closed connections
+            }
+          }
+          this.subscribers.delete(runId);
+        }, 1000);
       }
     }
   }

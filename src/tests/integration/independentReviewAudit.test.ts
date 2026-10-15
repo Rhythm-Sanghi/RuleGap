@@ -300,6 +300,66 @@ describe('Independent Review Audit & Hardening Suite', () => {
       const output = receivedEvents.join('\n');
       expect(output).toContain('event: run_cancelled');
     });
+
+    it('dispatches run_completed immediately to a late subscriber without Last-Event-ID', async () => {
+      const runId = '99999999-8888-7777-6666-555555555555';
+      const completedRun = {
+        runId,
+        planId: '11111111-2222-3333-4444-555555555555',
+        startedAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+        status: 'COMPLETED_CONSISTENT' as const,
+        contract: baseContract,
+        fixtureMode: 'corrected' as const,
+        observations: [],
+        summaryCounts: {
+          consistent: 1,
+          confirmedMismatch: 0,
+          inconclusive: 0,
+          executionError: 0,
+          notExecuted: 0,
+          interrupted: 0,
+          totalScheduled: 1,
+        },
+        sampledMismatchSummary: null,
+      };
+
+      await runStore.saveFinalizedRun(completedRun);
+
+      const receivedEvents: string[] = [];
+      await new Promise<void>((resolve, reject) => {
+        const req = http.request(
+          {
+            hostname: '127.0.0.1',
+            port: serverPort,
+            path: `/api/runs/${runId}/events`,
+            method: 'GET',
+            headers: {
+              Accept: 'text/event-stream',
+            },
+          },
+          (res) => {
+            res.on('data', (chunk) => {
+              receivedEvents.push(chunk.toString());
+              if (chunk.toString().includes('run_completed')) {
+                req.destroy();
+                resolve();
+              }
+            });
+            setTimeout(() => {
+              req.destroy();
+              resolve();
+            }, 1500);
+          }
+        );
+        req.on('error', reject);
+        req.end();
+      });
+
+      const allOutput = receivedEvents.join('\n');
+      expect(allOutput).toContain('event: run_completed');
+      expect(allOutput).toContain(runId);
+    });
   });
 
   describe('Summary Counts Lifecycle Accounting Invariants', () => {

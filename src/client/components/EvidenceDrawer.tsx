@@ -1,15 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { TestObservation, VerificationRunSnapshot } from '../../shared/contract.js';
+import { TestObservation, VerificationRunSnapshot, TestPlanRecord } from '../../shared/contract.js';
+import { formatObservationExplanation, formatValueWithUnit } from '../../shared/ruleEngine.js';
 
 interface EvidenceDrawerProps {
   observation: TestObservation | null;
   snapshot: VerificationRunSnapshot | null;
+  plan?: TestPlanRecord | null;
   onClose: () => void;
 }
 
 export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
   observation,
   snapshot,
+  plan,
   onClose,
 }) => {
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -129,6 +132,20 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
     }
   };
 
+  // Retrieve rationale from the authoritative test plan when available, or clearly mark it unavailable
+  const matchingCase =
+    plan && snapshot && plan.planId === snapshot.planId
+      ? plan.cases.find((c) => c.caseId === observation?.caseId)
+      : null;
+  const rationale = matchingCase?.rationale || 'Unavailable';
+
+  // Format executedAt safely without displaying Invalid Date
+  const executionTimestamp = (() => {
+    if (!observation?.executedAt) return '—';
+    const date = new Date(observation.executedAt);
+    return isNaN(date.getTime()) ? '—' : date.toLocaleString();
+  })();
+
   return (
     <>
       <div className="drawer-backdrop" onClick={onClose}>
@@ -156,7 +173,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
               <h3 id="drawer-title" style={{ fontSize: '1.15rem', display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span>Evidence Inspection</span>
                 <span className="mono" style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
-                  ₹{observation.value.toLocaleString('en-IN')}
+                  {formatValueWithUnit(observation.value, snapshot.contract.unit)}
                 </span>
               </h3>
             </div>
@@ -188,7 +205,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                       {observation.expectedOutcome}
                     </span>
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                      Rule: {snapshot.contract.fieldName} {snapshot.contract.operator} ₹{snapshot.contract.threshold.toLocaleString('en-IN')}
+                      Rule: {snapshot.contract.fieldName} {snapshot.contract.operator} {formatValueWithUnit(snapshot.contract.threshold, snapshot.contract.unit)}
                     </span>
                   </div>
                 </div>
@@ -222,13 +239,17 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
               {isMismatch ? (
                 <div className="callout callout-danger" style={{ marginBottom: 0 }}>
                   <strong>Contradiction Confirmed: </strong>
-                  The documented policy permits this value (threshold ≤ ₹{snapshot.contract.threshold.toLocaleString('en-IN')}),
-                  but the application form actively rejected it.
+                  {formatObservationExplanation(snapshot.contract, observation)}
                 </div>
               ) : observation.classification === 'CONSISTENT' ? (
                 <div className="callout callout-success" style={{ marginBottom: 0 }}>
                   <strong>Validation Consistent: </strong>
-                  Form behavior matches the documented policy expectation ({observation.expectedOutcome}).
+                  {formatObservationExplanation(snapshot.contract, observation)}
+                </div>
+              ) : observation.classification === 'INCONCLUSIVE' ? (
+                <div className="callout callout-warning" style={{ marginBottom: 0 }}>
+                  <strong>Inconclusive: </strong>
+                  {formatObservationExplanation(snapshot.contract, observation)}
                 </div>
               ) : null}
             </div>
@@ -307,7 +328,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                 </div>
                 <div className="metadata-row">
                   <span className="metadata-key">Test Rationale:</span>
-                  <span className="metadata-val">{observation.rationale || 'Boundary probe value'}</span>
+                  <span className="metadata-val">{rationale}</span>
                 </div>
                 <div className="metadata-row">
                   <span className="metadata-key">Source Document:</span>
@@ -320,7 +341,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                 <div className="metadata-row">
                   <span className="metadata-key">Confirmed Contract:</span>
                   <span className="metadata-val mono">
-                    {snapshot.contract.fieldName} {snapshot.contract.operator} ₹{snapshot.contract.threshold.toLocaleString('en-IN')} {snapshot.contract.unit}
+                    {snapshot.contract.fieldName} {snapshot.contract.operator} {formatValueWithUnit(snapshot.contract.threshold, snapshot.contract.unit)}
                   </span>
                 </div>
                 <div className="metadata-row">
@@ -333,7 +354,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
                 </div>
                 <div className="metadata-row">
                   <span className="metadata-key">Timestamp:</span>
-                  <span className="metadata-val mono">{new Date(observation.timestamp).toLocaleString()}</span>
+                  <span className="metadata-val mono">{executionTimestamp}</span>
                 </div>
                 <div className="metadata-row">
                   <span className="metadata-key">Duration:</span>
@@ -389,7 +410,7 @@ export const EvidenceDrawer: React.FC<EvidenceDrawerProps> = ({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <h4 id="fullsize-modal-title" style={{ fontWeight: 600, fontSize: '0.9rem', margin: 0 }}>
-                  Viewport Capture — Case {caseIndex} (₹{observation.value.toLocaleString('en-IN')})
+                  Viewport Capture — Case {caseIndex} ({formatValueWithUnit(observation.value, snapshot.contract.unit)})
                 </h4>
                 <span className="badge badge-neutral mono" style={{ fontSize: '0.75rem' }}>
                   {snapshot.fixtureMode === 'inconsistent' ? 'Mode A (₹2,50,000 threshold)' : 'Mode B (₹3,00,000 threshold)'}

@@ -57,6 +57,7 @@ export const App: React.FC = () => {
     historicalRuns,
     isRunning,
     isCancelling,
+    runError,
     selectedObservation,
     setSelectedObservation,
     selectRun,
@@ -150,6 +151,7 @@ export const App: React.FC = () => {
               isGenerating={isGenerating}
               isApproving={isApproving}
               planError={planError}
+              runError={runError}
               onApprove={approvePlan}
               isRunning={isRunning}
               isCancelling={isCancelling}
@@ -185,6 +187,7 @@ export const App: React.FC = () => {
       <EvidenceDrawer
         observation={selectedObservation}
         snapshot={selectedRunSnapshot}
+        plan={plan}
         onClose={() => setSelectedObservation(null)}
       />
     </div>

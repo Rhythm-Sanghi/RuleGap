@@ -1,13 +1,14 @@
 import React from 'react';
 import { NumericOperator, RuleContract } from '../../shared/contract.js';
+import { formatValueWithUnit } from '../../shared/ruleEngine.js';
 
 interface ContractEditorProps {
   fieldName: string;
   setFieldName: (v: string) => void;
   operator: NumericOperator;
   setOperator: (op: NumericOperator) => void;
-  threshold: number;
-  setThreshold: (t: number) => void;
+  threshold: number | '';
+  setThreshold: (t: number | '') => void;
   unit: string;
   setUnit: (u: string) => void;
   sourceExcerpt: string;
@@ -65,7 +66,7 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
               </span>
             </div>
             <div className="mono font-semibold" style={{ fontSize: '0.95rem', color: '#064e3b' }}>
-              {confirmedContract.fieldName} {confirmedContract.operator} ₹{confirmedContract.threshold.toLocaleString('en-IN')} {confirmedContract.unit}
+              {confirmedContract.fieldName} {confirmedContract.operator} {formatValueWithUnit(confirmedContract.threshold, confirmedContract.unit)}
             </div>
             <div style={{ fontSize: '0.78rem', color: '#065f46', marginTop: 4, fontStyle: 'italic' }}>
               &ldquo;{confirmedContract.sourceExcerpt}&rdquo;
@@ -145,7 +146,8 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
               value={threshold}
               onChange={(e) => {
                 if (isConfirmed) onEdit();
-                setThreshold(Number(e.target.value));
+                const val = e.target.value;
+                setThreshold(val === '' ? '' : Number(val));
               }}
               disabled={disabled || isConfirmed}
             />
@@ -190,7 +192,15 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
               type="button"
               className="btn btn-primary"
               onClick={onConfirm}
-              disabled={disabled || !fieldName.trim() || threshold === undefined || !sourceExcerpt.trim()}
+              disabled={
+                disabled ||
+                !fieldName.trim() ||
+                threshold === '' ||
+                isNaN(Number(threshold)) ||
+                !Number.isInteger(Number(threshold)) ||
+                Number(threshold) < 0 ||
+                !sourceExcerpt.trim()
+              }
               style={{ width: '100%' }}
             >
               Confirm Rule Contract & Derive Plan
