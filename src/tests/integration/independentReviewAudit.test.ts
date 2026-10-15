@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { vi, describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { createServer } from '../../server/server.js';
 import { planStore } from '../../server/storage/planStore.js';
 import { runStore } from '../../server/storage/runStore.js';
+import { executionRunner } from '../../server/runner/executionRunner.js';
 import { computeSummaryCounts } from '../../shared/ruleEngine.js';
 import { TestObservation, RuleContract } from '../../shared/contract.js';
 
@@ -685,5 +686,56 @@ describe('Independent Review Audit & Hardening Suite', () => {
       const data = await res.json();
       expect(data.error).toContain('incompatible');
     });
+
+    it('rolls back runner lock and cancellation handle if initial checkpoint fails, allowing subsequent run to start', async () => {
+      while (executionRunner.isRunActive()) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      const planId = await createAndApprovePlan();
+
+      // Fault injection: mock saveActiveCheckpoint to fail on startup
+      const checkpointSpy = vi.spyOn(runStore, 'saveActiveCheckpoint').mockRejectedValueOnce(
+        new Error('Disk I/O error writing initial active checkpoint')
+      );
+
+      // Attempt to start run - must fail with 500 server error
+      const failedRes = await fetch(`http://127.0.0.1:${serverPort}/api/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      expect(failedRes.status).toBe(500);
+      const errData = await failedRes.json();
+      expect(errData.error).toContain('Disk I/O error');
+
+      // Crucial verification: runner lock MUST NOT be active
+      expect(executionRunner.isRunActive()).toBe(false);
+
+      // Verify that a subsequent valid run can start immediately without concurrency lock error
+      checkpointSpy.mockRestore();
+
+      const successRes = await fetch(`http://127.0.0.1:${serverPort}/api/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({ planId }),
+      });
+
+      expect(successRes.status).toBe(201);
+      const successData = await successRes.json();
+      expect(successData.runId).toBeDefined();
+      expect(successData.status).toBe('RUNNING');
+
+      while (executionRunner.isRunActive()) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+    }, 15000);
   });
 });

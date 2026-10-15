@@ -300,5 +300,40 @@ describe('Slice 3 Integration: RunStore Atomic Checkpointing & Crash Recovery', 
       const retrieved = await store.getRun(runId);
       expect(retrieved?.status).toBe('COMPLETED_CONSISTENT');
     });
+
+    it('does not delete active checkpoint if finalization storage write fails during crash recovery', async () => {
+      const runId = crypto.randomUUID();
+      const abandoned = createMockSnapshot(runId, 'RUNNING');
+      await store.saveActiveCheckpoint(abandoned);
+
+      const activeFile = path.join(testDir, `.active-${runId}.json`);
+      expect(fs.existsSync(activeFile)).toBe(true);
+
+      // Force saveFinalizedRun to fail by mocking fs.promises.rename when writing the finalized file
+      const renameSpy = vi.spyOn(fs.promises, 'rename').mockImplementation(async () => {
+        const err = new Error('EPERM: disk locked during recovery finalization');
+        (err as { code?: string }).code = 'EPERM';
+        throw err;
+      });
+
+      // Expect reconcileStartupCrashes to propagate error
+      await expect(store.reconcileStartupCrashes()).rejects.toThrow('EPERM');
+
+      // Crucial assertion: the active checkpoint MUST STILL EXIST on disk and NOT be deleted!
+      expect(fs.existsSync(activeFile)).toBe(true);
+
+      // Restore rename so recovery can be retried
+      renameSpy.mockRestore();
+
+      // Retry reconciliation: it must succeed and finalize the run
+      const reconciled = await store.reconcileStartupCrashes();
+      expect(reconciled).toBe(1);
+      expect(fs.existsSync(activeFile)).toBe(false);
+
+      const finalized = await store.getRun(runId);
+      expect(finalized?.status).toBe('FAILED');
+      expect(finalized?.observations[1].lifecycleState).toBe('INTERRUPTED');
+      expect(finalized?.observations[2].lifecycleState).toBe('NOT_EXECUTED');
+    });
   });
 });

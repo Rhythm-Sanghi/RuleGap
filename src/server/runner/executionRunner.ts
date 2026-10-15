@@ -127,45 +127,52 @@ export class ExecutionRunner {
     this.currentActiveRunId = runId;
     cancellationManager.registerRun(runId);
 
-    const initialObservations: TestObservation[] = plan.cases.map((c) => ({
-      caseId: c.caseId,
-      value: c.value,
-      expectedOutcome: c.expectedOutcome,
-      observedFormOutcome: null,
-      observedFeedbackText: null,
-      classification: null,
-      lifecycleState: 'PENDING',
-      durationMs: 0,
-      screenshotId: null,
-      diagnosticDetails: null,
-      executedAt: null,
-    }));
+    try {
+      const initialObservations: TestObservation[] = plan.cases.map((c) => ({
+        caseId: c.caseId,
+        value: c.value,
+        expectedOutcome: c.expectedOutcome,
+        observedFormOutcome: null,
+        observedFeedbackText: null,
+        classification: null,
+        lifecycleState: 'PENDING',
+        durationMs: 0,
+        screenshotId: null,
+        diagnosticDetails: null,
+        executedAt: null,
+      }));
 
-    const snapshot: VerificationRunSnapshot = {
-      runId,
-      planId: plan.planId,
-      startedAt: new Date().toISOString(),
-      completedAt: null,
-      status: 'RUNNING',
-      contract,
-      fixtureMode: plan.fixtureMode,
-      observations: initialObservations,
-      summaryCounts: computeSummaryCounts(initialObservations, plan.cases.length),
-      sampledMismatchSummary: null,
-    };
+      const snapshot: VerificationRunSnapshot = {
+        runId,
+        planId: plan.planId,
+        startedAt: new Date().toISOString(),
+        completedAt: null,
+        status: 'RUNNING',
+        contract,
+        fixtureMode: plan.fixtureMode,
+        observations: initialObservations,
+        summaryCounts: computeSummaryCounts(initialObservations, plan.cases.length),
+        sampledMismatchSummary: null,
+      };
 
-    // Lock both stores to the current data directory before any writes
-    runStore.bindRunDir(runId);
-    evidenceStore.bindRunDir(runId);
+      // Lock both stores to the current data directory before any writes
+      runStore.bindRunDir(runId);
+      evidenceStore.bindRunDir(runId);
 
-    // Save initial active checkpoint
-    await runStore.saveActiveCheckpoint(snapshot);
+      // Save initial active checkpoint
+      await runStore.saveActiveCheckpoint(snapshot);
 
-    // Run execution loop asynchronously
-    this.executeLoop(snapshot, plan, port).finally(() => {
+      // Run execution loop asynchronously
+      this.executeLoop(snapshot, plan, port).finally(() => {
+        this.currentActiveRunId = null;
+        cancellationManager.unregisterRun(runId);
+      });
+    } catch (err: unknown) {
+      // Roll back active run lock and unregister cancellation handle on startup failure
       this.currentActiveRunId = null;
       cancellationManager.unregisterRun(runId);
-    });
+      throw err;
+    }
   }
 
   private async executeLoop(

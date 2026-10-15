@@ -168,34 +168,37 @@ export class RunStore {
     for (const file of files) {
       if (file.startsWith('.active-') && file.endsWith('.json')) {
         const filePath = path.join(this.baseDir, file);
+        let checkpoint: VerificationRunSnapshot;
         try {
           const content = await fs.promises.readFile(filePath, 'utf-8');
-          const checkpoint: VerificationRunSnapshot = JSON.parse(content);
-
-          // Mark in-flight or pending observations as interrupted / not-executed
-          for (const obs of checkpoint.observations) {
-            if (obs.lifecycleState === 'RUNNING') {
-              obs.lifecycleState = 'INTERRUPTED';
-              obs.diagnosticDetails = (obs.diagnosticDetails ? obs.diagnosticDetails + '; ' : '') + 'Server process interrupted';
-            } else if (obs.lifecycleState === 'PENDING') {
-              obs.lifecycleState = 'NOT_EXECUTED';
-            }
-          }
-
-          checkpoint.summaryCounts = computeSummaryCounts(
-            checkpoint.observations,
-            checkpoint.summaryCounts.totalScheduled
-          );
-          checkpoint.status = 'FAILED';
-          checkpoint.completedAt = new Date().toISOString();
-
-          // Write finalized record and remove checkpoint
-          await this.saveFinalizedRun(checkpoint);
-          reconciledCount++;
+          checkpoint = JSON.parse(content);
         } catch {
-          // If completely unparseable, remove corrupted checkpoint
+          // Only remove if the checkpoint file itself is completely unreadable or corrupted on disk
           await fs.promises.unlink(filePath).catch(() => {});
+          continue;
         }
+
+        // Mark in-flight or pending observations as interrupted / not-executed
+        for (const obs of checkpoint.observations) {
+          if (obs.lifecycleState === 'RUNNING') {
+            obs.lifecycleState = 'INTERRUPTED';
+            obs.diagnosticDetails = (obs.diagnosticDetails ? obs.diagnosticDetails + '; ' : '') + 'Server process interrupted';
+          } else if (obs.lifecycleState === 'PENDING') {
+            obs.lifecycleState = 'NOT_EXECUTED';
+          }
+        }
+
+        checkpoint.summaryCounts = computeSummaryCounts(
+          checkpoint.observations,
+          checkpoint.summaryCounts.totalScheduled
+        );
+        checkpoint.status = 'FAILED';
+        checkpoint.completedAt = new Date().toISOString();
+
+        // Write finalized record. If storage fails, the original active checkpoint remains intact on disk
+        // and reconciliation can be safely retried once the filesystem issue is resolved.
+        await this.saveFinalizedRun(checkpoint);
+        reconciledCount++;
       }
     }
 

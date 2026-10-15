@@ -115,7 +115,12 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
     const port = Number(serverPort || socketPort || configuredPort) || SERVER_CONFIG.port;
 
     // Start asynchronous execution with the authoritative approved contract
-    await executionRunner.startRun(runId, plan, executedContract, port);
+    try {
+      await executionRunner.startRun(runId, plan, executedContract, port);
+    } catch (startErr: unknown) {
+      const errorMsg = startErr instanceof Error ? startErr.message : String(startErr);
+      return res.status(500).json({ error: `Failed to initialize verification run: ${errorMsg}` });
+    }
 
     res.status(201).json({ runId, status: 'RUNNING' });
   } catch (err: unknown) {
