@@ -80,6 +80,7 @@ export const App: React.FC = () => {
   // Toggle fixture mode -> re-derive plan (clearing approval)
   const handleModeChange = async (newMode: 'inconsistent' | 'corrected') => {
     setFixtureMode(newMode);
+    resetPlan();
     if (confirmedContract) {
       await generatePlan(confirmedContract, newMode);
     }

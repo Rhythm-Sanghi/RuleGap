@@ -61,7 +61,12 @@ export const PreFlightPlan: React.FC<PreFlightPlanProps> = ({
   }
 
   return (
-    <div className="panel" aria-labelledby="pre-flight-heading">
+    <div
+      className="panel"
+      aria-labelledby="pre-flight-heading"
+      data-fixture-mode={plan.fixtureMode}
+      data-plan-id={plan.planId}
+    >
       <div className="panel-header">
         <div className="panel-header-title">
           <span className={`step-indicator ${isApproved ? 'active' : ''}`}>4</span>

@@ -112,6 +112,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await page.locator('#fixture-mode-select').selectOption('corrected');
 
     // Verify approval required for the new mode
+    await page.waitForSelector('.panel[data-fixture-mode="corrected"]');
     await page.waitForSelector('.badge:has-text("Approval Required")');
     expect(await page.locator('.badge:has-text("Approval Required")').isVisible()).toBe(true);
 

@@ -214,6 +214,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
 
       // Run Mode B to populate history
       await page.locator('#fixture-mode-select').selectOption('corrected');
+      await page.waitForSelector('.panel[data-fixture-mode="corrected"]');
       await page.waitForSelector('.badge:has-text("Approval Required")');
       const approveBtn2 = page.locator('button:has-text("Approve Plan & Authorize Verification")');
       await approveBtn2.scrollIntoViewIfNeeded();
