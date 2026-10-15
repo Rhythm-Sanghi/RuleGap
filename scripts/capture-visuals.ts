@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import { spawn, ChildProcess } from 'child_process';
 import { chromium, Browser } from 'playwright';
+import { getCommonChromiumLaunchOptions } from '../src/server/runner/browserPool.js';
 
 async function main() {
   const screenshotsDir = path.resolve(process.cwd(), 'devpost/screenshots');
@@ -71,7 +72,7 @@ async function main() {
       }, 15000);
     });
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
     const context = await browser.newContext({
       viewport: { width: 1440, height: 900 },
     });

@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { chromium, Request } from 'playwright';
 import { SCHOLARSHIP_DEMO_PROBES } from '../../shared/sampleData.js';
 import { createApp } from '../../server/server.js';
-import { browserPool } from '../../server/runner/browserPool.js';
+import { browserPool, getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 
 describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with Server Stopped', () => {
   it('opens downloaded report via file:// with server completely stopped, verifies offline rendering, base64 screenshots, and zero network calls', async () => {
@@ -98,7 +98,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
       await expect(fetch(`http://127.0.0.1:${serverPort}/api/runs/${runId}`)).rejects.toThrow();
 
       // 5. Launch Playwright and navigate directly to file://${reportPath}
-      const browser = await chromium.launch({ headless: true });
+      const browser = await chromium.launch(getCommonChromiumLaunchOptions());
       const context = await browser.newContext();
       const page = await context.newPage();
 

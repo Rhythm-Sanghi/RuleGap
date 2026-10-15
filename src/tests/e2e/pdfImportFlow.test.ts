@@ -5,7 +5,7 @@ import fs from 'fs';
 import os from 'os';
 import { chromium, Browser, Page, Request } from 'playwright';
 import { createApp } from '../../server/server.js';
-import { browserPool } from '../../server/runner/browserPool.js';
+import { browserPool, getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 
 describe('Slice 4 E2E: Real Production PDF Import, Worker Verification & Fallback', () => {
   let server: http.Server;
@@ -85,7 +85,7 @@ startxref
       });
     });
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
     page = await browser.newPage();
 
     // Listen to network and console diagnostics

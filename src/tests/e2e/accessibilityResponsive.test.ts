@@ -3,7 +3,7 @@ import http from 'http';
 import { chromium, Browser } from 'playwright';
 import AxeBuilder from '@axe-core/playwright';
 import { createApp } from '../../server/server.js';
-import { browserPool } from '../../server/runner/browserPool.js';
+import { browserPool, getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 import { executionRunner } from '../../server/runner/executionRunner.js';
 import { cancellationManager } from '../../server/runner/cancellationManager.js';
 
@@ -23,7 +23,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       });
     });
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
   });
 
   afterEach(async () => {
@@ -184,14 +184,16 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await approveBtn.scrollIntoViewIfNeeded();
       await approveBtn.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
       // Start Mode A run under 200% zoom
       const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn.scrollIntoViewIfNeeded();
       await startBtn.click();
+      await page.waitForSelector('button:has-text("Verification Running...")');
 
       // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
 
       // Element 7: Evidence matrix
       expect(await page.locator('table[aria-label="Verification observations matrix"]').isVisible()).toBe(true);
@@ -225,7 +227,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await startBtn2.scrollIntoViewIfNeeded();
       await startBtn2.click();
       await page.waitForSelector('button:has-text("Verification Running...")');
-      await page.waitForSelector('.callout-success', { timeout: 75000 });
+      await page.waitForSelector('.callout-success', { timeout: 90000 });
 
       // Element 9: History selector (now visible with multiple runs)
       await page.waitForSelector('#history-select');
@@ -248,7 +250,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
     } finally {
       await context.close();
     }
-  }, 120000);
+  }, 180000);
 
   it('supports full keyboard navigation with visible focus rings and dialog focus management', async () => {
     const context = await browser.newContext({

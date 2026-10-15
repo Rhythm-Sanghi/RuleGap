@@ -17,7 +17,10 @@ describe('Independent Review Audit & Hardening Suite', () => {
   let serverPort: number;
   const testDataDir = path.join(os.tmpdir(), `rulegap-audit-${Date.now()}`);
 
+  let originalDataDir: string | undefined;
+
   beforeAll(async () => {
+    originalDataDir = process.env.RULEGAP_DATA_DIR;
     process.env.RULEGAP_DATA_DIR = testDataDir;
     fs.mkdirSync(testDataDir, { recursive: true });
 
@@ -36,7 +39,11 @@ describe('Independent Review Audit & Hardening Suite', () => {
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });
-    delete process.env.RULEGAP_DATA_DIR;
+    if (originalDataDir !== undefined) {
+      process.env.RULEGAP_DATA_DIR = originalDataDir;
+    } else {
+      delete process.env.RULEGAP_DATA_DIR;
+    }
     fs.rmSync(testDataDir, { recursive: true, force: true });
   });
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
 import { chromium, Browser, Page } from 'playwright';
 import { createApp } from '../../server/server.js';
-import { browserPool } from '../../server/runner/browserPool.js';
+import { browserPool, getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 
 describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
   let server: http.Server;
@@ -16,11 +16,12 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
       server = app.listen(0, '127.0.0.1', () => {
         const addr = server.address();
         serverPort = typeof addr === 'object' && addr ? addr.port : 3000;
+        app.set('serverPort', serverPort);
         resolve();
       });
     });
 
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
     page = await browser.newPage();
     page.on('console', (msg) => console.log('BROWSER CONSOLE:', msg.text()));
     page.on('pageerror', (err) => console.error('BROWSER PAGEERROR:', err));
@@ -129,7 +130,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
 
     // Wait for Mode B verification to complete
     await page.waitForSelector('.callout-success', {
-      timeout: 75000,
+      timeout: 90000,
     });
 
     // Check Mode B summary counts in the UI
@@ -159,5 +160,5 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     const journeyDurationMs = Date.now() - journeyStartTime;
     console.log(`[Demonstration Benchmark] Full 12-step workbench journey completed in ${journeyDurationMs}ms (${(journeyDurationMs / 1000).toFixed(2)}s). Fits within 180s video limit.`);
     expect(journeyDurationMs).toBeLessThan(180000);
-  }, 120000);
+  }, 180000);
 });

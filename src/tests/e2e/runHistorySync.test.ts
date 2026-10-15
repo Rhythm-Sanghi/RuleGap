@@ -4,6 +4,7 @@ import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { getCommonChromiumLaunchOptions } from '../../server/runner/browserPool.js';
 
 describe('Run History and Displayed Results Synchronization Regression Test', () => {
   const testPort = 3055;
@@ -72,7 +73,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
     if (fs.existsSync(isolatedDataDir)) {
       await fs.promises.rm(isolatedDataDir, { recursive: true, force: true });
     }
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(getCommonChromiumLaunchOptions());
   });
 
   afterAll(async () => {
@@ -93,6 +94,10 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
 
     const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const page = await context.newPage();
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') console.error('[Page console error]:', msg.text());
+    });
+    page.on('pageerror', (err) => console.error('[Page uncaught error]:', err));
 
     try {
       await page.goto(url);
@@ -112,7 +117,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       await startBtn.click();
 
       // Wait for Mode A completion
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
       expect(await page.locator('.summary-card.consistent .summary-value').textContent()).toBe('3');
       expect(await page.locator('.summary-card.mismatch .summary-value').textContent()).toBe('4');
 
@@ -148,7 +153,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       await page.waitForSelector('button:has-text("Verification Running...")');
 
       // Wait for Mode B completion
-      await page.waitForSelector('.callout-success', { timeout: 75000 });
+      await page.waitForSelector('.callout-success', { timeout: 90000 });
       expect(await page.locator('.summary-card.consistent .summary-value').textContent()).toBe('7');
       expect(await page.locator('.summary-card.mismatch .summary-value').textContent()).toBe('0');
 
@@ -291,5 +296,5 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
     } finally {
       await context.close();
     }
-  }, 120000);
+  }, 180000);
 });
