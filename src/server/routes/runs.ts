@@ -129,6 +129,14 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
   }
 });
 
+// Disable caching for all runs API endpoints to ensure fresh status updates
+runsRouter.use('/api/runs', (_req: Request, res: Response, next) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  next();
+});
+
 // List historical runs
 runsRouter.get('/api/runs', async (_req: Request, res: Response) => {
   try {

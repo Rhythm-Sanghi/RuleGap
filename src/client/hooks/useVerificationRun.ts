@@ -218,7 +218,7 @@ export function useVerificationRun() {
 
         const pollStatus = () => {
           if (!isStreamActive) return;
-          fetch(`/api/runs/${runId}`)
+          fetch(`/api/runs/${runId}?_t=${Date.now()}`, { cache: 'no-store' })
             .then((r) => (r.ok ? r.json() : null))
             .then((data: VerificationRunSnapshot | null) => {
               if (!isStreamActive) return;
@@ -236,17 +236,17 @@ export function useVerificationRun() {
                 fetchRunHistory();
                 return;
               }
-              pollTimer = setTimeout(pollStatus, 1500);
+              pollTimer = setTimeout(pollStatus, 1000);
             })
             .catch(() => {
               if (isStreamActive) {
-                pollTimer = setTimeout(pollStatus, 2000);
+                pollTimer = setTimeout(pollStatus, 1500);
               }
             });
         };
 
-        // Safety polling timer starts after 3s to guarantee terminal synchronization even if SSE drops
-        pollTimer = setTimeout(pollStatus, 3000);
+        // Safety polling timer starts after 1s to guarantee terminal synchronization even if SSE drops
+        pollTimer = setTimeout(pollStatus, 1000);
 
         sse.onerror = () => {
           // Immediate polling fallback if SSE connection encounters an error

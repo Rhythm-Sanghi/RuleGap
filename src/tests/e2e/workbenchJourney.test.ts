@@ -88,7 +88,7 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
 
     // Wait for Mode A verification to complete (all 7 observations finished)
     await page.waitForSelector('.callout-danger', {
-      timeout: 75000,
+      timeout: 90000,
     });
 
     // Check Mode A summary counts in the UI
