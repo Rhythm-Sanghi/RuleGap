@@ -247,6 +247,9 @@ export function useVerificationRun() {
             });
         };
 
+        // Start background polling alongside SSE to ensure terminal state synchronization even if stream buffers
+        pollTimer = setTimeout(pollStatus, 1000);
+
         sse.onerror = () => {
           // Polling fallback if SSE connection is dropped or interrupted
           if (!pollTimer && isStreamActive) {

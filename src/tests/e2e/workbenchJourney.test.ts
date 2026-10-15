@@ -78,9 +78,10 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await approveBtn.click();
     await page.waitForSelector('.badge:has-text("Plan Approved")');
     expect(await page.locator('.badge:has-text("Plan Approved")').isVisible()).toBe(true);
+    await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
     // 5. Click "Start Browser Verification Run" (Mode A default)
-    const startRunBtn = page.getByRole('button', { name: 'Start Browser Verification Run' });
+    const startRunBtn = page.locator('button:has-text("Start Browser Verification Run")');
     await startRunBtn.scrollIntoViewIfNeeded();
     await startRunBtn.click();
     await page.waitForSelector('button:has-text("Verification Running...")');
@@ -122,8 +123,9 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     await approveBtn2.click();
     await page.waitForSelector('.badge:has-text("Plan Approved")');
     expect(await page.locator('.badge:has-text("Plan Approved")').isVisible()).toBe(true);
+    await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
-    const startRunBtn2 = page.getByRole('button', { name: 'Start Browser Verification Run' });
+    const startRunBtn2 = page.locator('button:has-text("Start Browser Verification Run")');
     await startRunBtn2.scrollIntoViewIfNeeded();
     await startRunBtn2.click();
     await page.waitForSelector('button:has-text("Verification Running...")');
