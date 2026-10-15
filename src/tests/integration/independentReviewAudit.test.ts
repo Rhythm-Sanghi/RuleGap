@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import http from 'http';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
+import crypto from 'crypto';
 import { createServer } from '../../server/server.js';
 import { planStore } from '../../server/storage/planStore.js';
 import { runStore } from '../../server/storage/runStore.js';
@@ -11,7 +13,7 @@ import { TestObservation, RuleContract } from '../../shared/contract.js';
 describe('Independent Review Audit & Hardening Suite', () => {
   let server: http.Server;
   let serverPort: number;
-  const testDataDir = path.resolve(process.cwd(), '.rulegap-audit-data');
+  const testDataDir = path.join(os.tmpdir(), `rulegap-audit-${Date.now()}`);
 
   beforeAll(async () => {
     process.env.RULEGAP_DATA_DIR = testDataDir;
@@ -454,6 +456,107 @@ describe('Independent Review Audit & Hardening Suite', () => {
         counts.notExecuted +
         counts.interrupted;
       expect(sum).toBe(counts.totalScheduled);
+    });
+
+    it('MUST NOT count PENDING or RUNNING observations as completed INCONCLUSIVE', () => {
+      const pendingObservations: TestObservation[] = [
+        {
+          caseId: 'case-1',
+          value: 250000,
+          expectedOutcome: 'ACCEPT',
+          observedFormOutcome: null,
+          observedFeedbackText: null,
+          classification: null,
+          lifecycleState: 'PENDING',
+          durationMs: 0,
+          screenshotId: null,
+          diagnosticDetails: null,
+          executedAt: null,
+        },
+        {
+          caseId: 'case-2',
+          value: 300000,
+          expectedOutcome: 'ACCEPT',
+          observedFormOutcome: null,
+          observedFeedbackText: null,
+          classification: null,
+          lifecycleState: 'RUNNING',
+          durationMs: 0,
+          screenshotId: null,
+          diagnosticDetails: null,
+          executedAt: null,
+        },
+      ];
+
+      const counts = computeSummaryCounts(pendingObservations, 2);
+
+      expect(counts.inconclusive).toBe(0);
+      expect(counts.consistent).toBe(0);
+      expect(counts.confirmedMismatch).toBe(0);
+      expect(counts.executionError).toBe(0);
+      expect(counts.notExecuted).toBe(2);
+      expect(
+        counts.consistent +
+          counts.confirmedMismatch +
+          counts.inconclusive +
+          counts.executionError +
+          counts.notExecuted +
+          counts.interrupted
+      ).toBe(2);
+    });
+  });
+
+  describe('Fixture Contract Compatibility Enforcement', () => {
+    it('rejects test plan creation with incompatible currency unit for scholarship fixture', async () => {
+      const invalidContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        unit: 'USD',
+      };
+
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({
+          contract: invalidContract,
+          fixtureId: 'scholarship',
+          fixtureMode: 'inconsistent',
+          targetFieldSelector: '#annual-income',
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('Incompatible unit');
+    });
+
+    it('rejects test plan creation with negative income threshold', async () => {
+      const invalidContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        threshold: -5000,
+      };
+
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({
+          contract: invalidContract,
+          fixtureId: 'scholarship',
+          fixtureMode: 'inconsistent',
+          targetFieldSelector: '#annual-income',
+        }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('negative');
     });
   });
 });

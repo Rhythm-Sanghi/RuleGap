@@ -191,7 +191,17 @@ export class ExecutionRunner {
           total: plan.cases.length,
         });
 
-        const context = await browserPool.createHermeticContext(browser, port);
+        let context: import('playwright').BrowserContext;
+        try {
+          context = await browserPool.createHermeticContext(browser, port);
+        } catch (ctxErr) {
+          if (cancellationManager.isCancelled(runId)) {
+            await this.handleCancellationFinalization(snapshot, i);
+            return;
+          }
+          throw ctxErr;
+        }
+
         if (cancellationManager.isCancelled(runId)) {
           await context.close().catch(() => {});
           await this.handleCancellationFinalization(snapshot, i);
@@ -319,6 +329,7 @@ export class ExecutionRunner {
       await runStore.saveFinalizedRun(snapshot);
       this.emitEvent(runId, 'run_completed', snapshot);
     } catch (err: unknown) {
+      console.error('[ExecutionRunner executeLoop error]:', err);
       snapshot.completedAt = new Date().toISOString();
       snapshot.status = 'FAILED';
       await runStore.saveFinalizedRun(snapshot).catch(() => {});

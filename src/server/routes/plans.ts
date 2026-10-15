@@ -5,13 +5,31 @@ import { planStore } from '../storage/planStore.js';
 
 export const plansRouter = Router();
 
-const CreatePlanBodySchema = z.object({
-  contract: RuleContractSchema,
-  fixtureId: z.literal('scholarship'),
-  fixtureMode: z.enum(['inconsistent', 'corrected']),
-  targetFieldSelector: z.literal('#annual-income'),
-  demoProbes: z.array(z.number().int().safe()).optional(),
-});
+const CreatePlanBodySchema = z
+  .object({
+    contract: RuleContractSchema,
+    fixtureId: z.literal('scholarship'),
+    fixtureMode: z.enum(['inconsistent', 'corrected']),
+    targetFieldSelector: z.literal('#annual-income'),
+    demoProbes: z.array(z.number().int().safe()).optional(),
+  })
+  .refine(
+    (data) => {
+      const unit = data.contract.unit.trim().toUpperCase();
+      return unit === 'INR' || unit === '₹' || unit === 'RS';
+    },
+    {
+      message: "Incompatible unit: The 'scholarship' fixture validates monetary income in INR (₹). Contracts denominated in other units cannot be verified against this fixture.",
+      path: ['contract', 'unit'],
+    }
+  )
+  .refine(
+    (data) => data.contract.threshold >= 0,
+    {
+      message: "Incompatible threshold: Income threshold cannot be negative for the 'scholarship' fixture.",
+      path: ['contract', 'threshold'],
+    }
+  );
 
 // Create canonical server-managed plan
 plansRouter.post('/api/plans', async (req: Request, res: Response) => {

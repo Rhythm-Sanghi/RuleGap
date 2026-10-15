@@ -1,7 +1,8 @@
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { spawn, ChildProcess } from 'child_process';
-import { chromium } from 'playwright';
+import { chromium, Browser } from 'playwright';
 
 async function main() {
   const screenshotsDir = path.resolve(process.cwd(), 'devpost/screenshots');
@@ -9,74 +10,83 @@ async function main() {
     fs.mkdirSync(screenshotsDir, { recursive: true });
   }
 
-  const visualsDataDir = path.resolve(process.cwd(), '.rulegap-visuals');
-  if (fs.existsSync(visualsDataDir)) {
-    fs.rmSync(visualsDataDir, { recursive: true, force: true });
-  }
-
+  // Use isolated unique temporary storage to guarantee no pollution or deletion of developer data
+  const visualsDataDir = path.join(os.tmpdir(), `rulegap-visuals-${Date.now()}`);
   const serverPort = 3058;
 
-  const serverProc: ChildProcess = await new Promise((resolve, reject) => {
-    const proc = spawn('npx', ['tsx', 'src/server/server.ts'], {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        PORT: String(serverPort),
-        RULEGAP_DATA_DIR: '.rulegap-visuals',
-      },
-      stdio: ['pipe', 'pipe', 'pipe'],
-      shell: true,
-    });
+  const serverDist = path.resolve(process.cwd(), 'dist/server/server/server.js');
+  const useDist = fs.existsSync(serverDist);
+  const cmd = useDist ? process.execPath : 'npx';
+  const args = useDist ? [serverDist] : ['tsx', 'src/server/server.ts'];
 
-    let stdout = '';
-    const onData = (data: Buffer) => {
-      stdout += data.toString();
-      if (stdout.includes(`Running on http://127.0.0.1:${serverPort}`)) {
-        proc.stdout?.off('data', onData);
-        resolve(proc);
-      }
-    };
+  let serverProc: ChildProcess | null = null;
+  let browser: Browser | null = null;
 
-    proc.stdout?.on('data', onData);
-    proc.on('error', reject);
-
-    setTimeout(() => {
-      reject(new Error(`Server failed to start within 12s: ${stdout}`));
-    }, 12000);
-  });
-
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-  });
-  const page = await context.newPage();
-
-  async function takeCleanFullScreenshot(filePath: string) {
-    // Scroll to top first
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await page.waitForTimeout(150);
-    const scrollHeight = await page.evaluate(() =>
-      Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 900)
-    );
-    await page.setViewportSize({ width: 1440, height: scrollHeight });
-    await page.screenshot({ path: filePath });
-    // Reset standard viewport
-    await page.setViewportSize({ width: 1440, height: 900 });
-  }
-
-  function killProcess(proc: ChildProcess): Promise<void> {
+  function killProcess(proc: ChildProcess | null): Promise<void> {
     return new Promise((resolve) => {
-      if (!proc.pid) return resolve();
-      if (process.platform === 'win32') {
-        spawn('taskkill', ['/pid', String(proc.pid), '/f', '/t']).on('close', () => resolve());
-      } else {
-        proc.kill('SIGKILL');
+      if (!proc || !proc.pid || proc.killed) return resolve();
+      try {
+        if (process.platform === 'win32') {
+          const killer = spawn('taskkill', ['/pid', String(proc.pid), '/f', '/t']);
+          killer.on('close', () => resolve());
+          killer.on('error', () => resolve());
+        } else {
+          proc.kill('SIGKILL');
+          resolve();
+        }
+      } catch {
         resolve();
       }
     });
   }
 
   try {
+    serverProc = await new Promise<ChildProcess>((resolve, reject) => {
+      const proc = spawn(cmd, args, {
+        cwd: process.cwd(),
+        env: {
+          ...process.env,
+          PORT: String(serverPort),
+          RULEGAP_DATA_DIR: visualsDataDir,
+        },
+        stdio: ['pipe', 'pipe', 'pipe'],
+        shell: !useDist,
+      });
+
+      let stdout = '';
+      const onData = (data: Buffer) => {
+        stdout += data.toString();
+        if (stdout.includes(`Running on http://127.0.0.1:${serverPort}`)) {
+          proc.stdout?.off('data', onData);
+          resolve(proc);
+        }
+      };
+
+      proc.stdout?.on('data', onData);
+      proc.on('error', reject);
+
+      setTimeout(() => {
+        reject(new Error(`Server failed to start within 15s: ${stdout}`));
+      }, 15000);
+    });
+
+    browser = await chromium.launch({ headless: true });
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+    });
+    const page = await context.newPage();
+
+    async function takeCleanFullScreenshot(filePath: string) {
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.waitForTimeout(150);
+      const scrollHeight = await page.evaluate(() =>
+        Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 900)
+      );
+      await page.setViewportSize({ width: 1440, height: scrollHeight });
+      await page.screenshot({ path: filePath });
+      await page.setViewportSize({ width: 1440, height: 900 });
+    }
+
     // 1. Empty workbench
     await page.goto(`http://127.0.0.1:${serverPort}`);
     await page.waitForSelector('.app-header');
@@ -96,15 +106,14 @@ async function main() {
 
     // 3. Four-mismatch result (Mode A verification)
     await page.locator('button:has-text("Start Browser Verification Run")').click();
-    await page.waitForSelector('.callout-danger', { timeout: 35000 });
-    // Wait for history-select to update
+    await page.waitForSelector('.callout-danger', { timeout: 45000 });
     await page.waitForSelector('#history-select');
     await takeCleanFullScreenshot(path.join(screenshotsDir, '03-four-mismatch-result.png'));
     console.log('Saved 03-four-mismatch-result.png');
 
     // 4. Evidence drawer open
     await page.locator('.workbench-results-section').scrollIntoViewIfNeeded();
-    const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
+    const inspectBtn = page.locator('tr.mismatch-row').first().locator('.btn-inspect');
     await inspectBtn.click();
     await page.waitForSelector('.drawer', { state: 'visible' });
     await page.waitForSelector('.screenshot-preview');
@@ -119,22 +128,31 @@ async function main() {
     await page.locator('#fixture-mode-select').selectOption('corrected');
     await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
     await page.locator('button:has-text("Start Browser Verification Run")').click();
-    await page.waitForSelector('.callout-success', { timeout: 35000 });
-    // Wait for history-select to have 2 options
+    await page.waitForSelector('.callout-success', { timeout: 45000 });
     await page.waitForFunction(() => {
       const select = document.querySelector('#history-select') as HTMLSelectElement | null;
       return select && select.options.length === 2;
     });
     await takeCleanFullScreenshot(path.join(screenshotsDir, '05-corrected-consistent-result.png'));
     console.log('Saved 05-corrected-consistent-result.png');
-
   } finally {
-    await browser.close().catch(() => {});
-    await killProcess(serverProc);
+    if (browser) {
+      await browser.close().catch(() => {});
+    }
+    if (serverProc) {
+      await killProcess(serverProc);
+    }
     if (fs.existsSync(visualsDataDir)) {
-      fs.rmSync(visualsDataDir, { recursive: true, force: true });
+      try {
+        await fs.promises.rm(visualsDataDir, { recursive: true, force: true });
+      } catch {
+        // ignore
+      }
     }
   }
 }
 
-main().catch(console.error);
+if (process.argv.includes('--run')) {
+  main().catch(console.error);
+}
+export { main };

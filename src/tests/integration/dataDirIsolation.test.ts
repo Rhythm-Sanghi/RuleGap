@@ -3,11 +3,12 @@ import { spawn, ChildProcess } from 'child_process';
 import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { SCHOLARSHIP_DEMO_PROBES } from '../../shared/sampleData.js';
 
 describe('RULEGAP_DATA_DIR Isolation and Restart Persistence', () => {
   const testPort = 3044;
-  const isolatedDataDir = path.resolve(process.cwd(), '.rulegap-demo-isolated');
+  const isolatedDataDir = path.join(os.tmpdir(), `rulegap-demo-isolated-${Date.now()}`);
   const defaultRunsDir = path.resolve(process.cwd(), '.rulegap', 'runs');
 
   function spawnServer(): Promise<{ proc: ChildProcess; url: string }> {
@@ -22,7 +23,7 @@ describe('RULEGAP_DATA_DIR Isolation and Restart Persistence', () => {
         env: {
           ...process.env,
           PORT: String(testPort),
-          RULEGAP_DATA_DIR: '.rulegap-demo-isolated',
+          RULEGAP_DATA_DIR: isolatedDataDir,
         },
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: !useDist,

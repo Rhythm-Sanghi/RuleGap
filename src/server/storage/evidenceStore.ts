@@ -3,11 +3,16 @@ import path from 'path';
 import { SERVER_CONFIG } from '../config.js';
 
 export class EvidenceStore {
-  private baseDir: string;
+  private customBaseDir?: string;
 
-  constructor(baseDir: string = SERVER_CONFIG.evidenceStorageDir) {
-    this.baseDir = baseDir;
-    fs.mkdirSync(this.baseDir, { recursive: true });
+  constructor(baseDir?: string) {
+    this.customBaseDir = baseDir;
+  }
+
+  get baseDir(): string {
+    const dir = this.customBaseDir || SERVER_CONFIG.evidenceStorageDir;
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
   }
 
   /**

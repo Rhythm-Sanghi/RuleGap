@@ -3,10 +3,11 @@ import { chromium, Browser, BrowserContext, Page } from 'playwright';
 import { spawn, ChildProcess } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 describe('Run History and Displayed Results Synchronization Regression Test', () => {
   const testPort = 3055;
-  const isolatedDataDir = path.resolve(process.cwd(), '.rulegap-sync-test');
+  const isolatedDataDir = path.join(os.tmpdir(), `rulegap-sync-test-${Date.now()}`);
   let currentProc: ChildProcess | null = null;
   let browser: Browser;
 
@@ -22,7 +23,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
         env: {
           ...process.env,
           PORT: String(testPort),
-          RULEGAP_DATA_DIR: '.rulegap-sync-test',
+          RULEGAP_DATA_DIR: isolatedDataDir,
         },
         stdio: ['pipe', 'pipe', 'pipe'],
         shell: !useDist,

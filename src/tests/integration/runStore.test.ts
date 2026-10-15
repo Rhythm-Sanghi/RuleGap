@@ -1,12 +1,12 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import crypto from 'crypto';
 import { RunStore } from '../../server/storage/runStore.js';
 import { VerificationRunSnapshot } from '../../shared/contract.js';
 
 describe('Slice 3 Integration: RunStore Atomic Checkpointing & Crash Recovery', () => {
-  const testDir = path.join(process.cwd(), '.test-rulegap-runs-' + Date.now());
+  const testDir = path.join(os.tmpdir(), '.test-rulegap-runs-' + Date.now());
   let store: RunStore;
 
   beforeEach(() => {

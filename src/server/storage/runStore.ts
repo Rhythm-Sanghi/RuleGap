@@ -7,12 +7,45 @@ import {
 import { computeSummaryCounts } from '../../shared/ruleEngine.js';
 import { SERVER_CONFIG } from '../config.js';
 
-export class RunStore {
-  private baseDir: string;
+async function atomicWriteFile(targetPath: string, content: string): Promise<void> {
+  const dir = path.dirname(targetPath);
+  const base = path.basename(targetPath);
+  const tempPath = path.join(dir, `.${base}.${process.pid}.${Date.now()}.tmp`);
 
-  constructor(baseDir: string = SERVER_CONFIG.runsStorageDir) {
-    this.baseDir = baseDir;
-    fs.mkdirSync(this.baseDir, { recursive: true });
+  await fs.promises.writeFile(tempPath, content, 'utf-8');
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      await fs.promises.rename(tempPath, targetPath);
+      return;
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if ((code === 'EPERM' || code === 'EBUSY') && attempt < 4) {
+        await new Promise((r) => setTimeout(r, 20 * (attempt + 1)));
+        continue;
+      }
+      try {
+        await fs.promises.copyFile(tempPath, targetPath);
+        await fs.promises.unlink(tempPath).catch(() => {});
+        return;
+      } catch {
+        throw err;
+      }
+    }
+  }
+}
+
+export class RunStore {
+  private customBaseDir?: string;
+
+  constructor(baseDir?: string) {
+    this.customBaseDir = baseDir;
+  }
+
+  get baseDir(): string {
+    const dir = this.customBaseDir || SERVER_CONFIG.runsStorageDir;
+    fs.mkdirSync(dir, { recursive: true });
+    return dir;
   }
 
   /**
@@ -20,11 +53,8 @@ export class RunStore {
    */
   async saveActiveCheckpoint(snapshot: VerificationRunSnapshot): Promise<void> {
     const filename = `.active-${snapshot.runId}.json`;
-    const tempPath = path.join(this.baseDir, `${filename}.tmp`);
     const finalPath = path.join(this.baseDir, filename);
-
-    await fs.promises.writeFile(tempPath, JSON.stringify(snapshot, null, 2), 'utf-8');
-    await fs.promises.rename(tempPath, finalPath);
+    await atomicWriteFile(finalPath, JSON.stringify(snapshot, null, 2));
   }
 
   /**
@@ -35,11 +65,8 @@ export class RunStore {
     VerificationRunSnapshotSchema.parse(snapshot);
 
     const filename = `${snapshot.runId}.json`;
-    const tempPath = path.join(this.baseDir, `.${filename}.tmp`);
     const finalPath = path.join(this.baseDir, filename);
-
-    await fs.promises.writeFile(tempPath, JSON.stringify(snapshot, null, 2), 'utf-8');
-    await fs.promises.rename(tempPath, finalPath);
+    await atomicWriteFile(finalPath, JSON.stringify(snapshot, null, 2));
 
     // Clean up active checkpoint if present
     const activePath = path.join(this.baseDir, `.active-${snapshot.runId}.json`);
