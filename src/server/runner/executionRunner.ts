@@ -339,7 +339,6 @@ export class ExecutionRunner {
 
       // Save finalized immutable snapshot
       await runStore.saveFinalizedRun(snapshot);
-      console.log(`[ExecutionRunner] Run ${runId} finalized with status: ${snapshot.status}, consistent: ${counts.consistent}, mismatches: ${counts.confirmedMismatch}`);
       this.emitEvent(runId, 'run_completed', snapshot);
     } catch (err: unknown) {
       console.error('[ExecutionRunner executeLoop error]:', err);

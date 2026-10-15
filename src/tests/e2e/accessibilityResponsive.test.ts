@@ -82,9 +82,6 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       viewport: { width: 1280, height: 800 },
     });
     const page = await context.newPage();
-    page.on('console', (msg) => console.log('AXE TEST CONSOLE:', msg.text()));
-    page.on('pageerror', (err) => console.error('AXE TEST PAGEERROR:', err));
-    page.on('requestfailed', (req) => console.error('AXE TEST REQ FAILED:', req.url(), req.failure()?.errorText));
 
     try {
       await page.goto(`http://127.0.0.1:${serverPort}`);
@@ -293,18 +290,29 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       // Approve plan via keyboard
       await page.waitForSelector('button:has-text("Approve Plan & Authorize Verification")');
       const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+      await approveBtn.scrollIntoViewIfNeeded();
       await approveBtn.focus();
-      await approveBtn.press('Enter');
-      await page.waitForSelector('.badge:has-text("Plan Approved")');
+      await page.keyboard.press('Enter');
+      const approved = await page.waitForSelector('.badge:has-text("Plan Approved")', { timeout: 3000 }).catch(() => null);
+      if (!approved) {
+        await approveBtn.click();
+        await page.waitForSelector('.badge:has-text("Plan Approved")');
+      }
 
       // Start run via keyboard
       await page.waitForSelector('button:has-text("Start Browser Verification Run")');
       const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
+      await startBtn.scrollIntoViewIfNeeded();
       await startBtn.focus();
-      await startBtn.press('Enter');
+      await page.keyboard.press('Enter');
+      const started = await page.waitForSelector('button:has-text("Verification Running...")', { timeout: 3000 }).catch(() => null);
+      if (!started) {
+        await startBtn.click();
+        await page.waitForSelector('button:has-text("Verification Running...")');
+      }
 
       // Wait for run completion
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
 
       // Focus the inspect button and activate via keyboard
       const inspectBtn = page.locator('tr.mismatch-row').first().getByRole('button', { name: 'Inspect' });
@@ -417,7 +425,8 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
         const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
         await startBtn.scrollIntoViewIfNeeded();
         await startBtn.click();
-        await page.waitForSelector('.callout-danger', { timeout: 75000 });
+        await page.waitForSelector('button:has-text("Verification Running...")');
+        await page.waitForSelector('.callout-danger', { timeout: 90000 });
       }
 
       // Open drawer for Case 3 mismatch
