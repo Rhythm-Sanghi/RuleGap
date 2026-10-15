@@ -147,6 +147,7 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       await approveBtnB.scrollIntoViewIfNeeded();
       await approveBtnB.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
       const startBtnB = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtnB.scrollIntoViewIfNeeded();
       await startBtnB.click();

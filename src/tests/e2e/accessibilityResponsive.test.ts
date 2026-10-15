@@ -222,6 +222,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await approveBtn2.scrollIntoViewIfNeeded();
       await approveBtn2.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
+      await page.waitForSelector('button:has-text("Start Browser Verification Run")');
 
       const startBtn2 = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn2.scrollIntoViewIfNeeded();

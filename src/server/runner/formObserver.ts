@@ -98,39 +98,35 @@ export async function observeFormSubmission(
 
     await submitBtn.click({ timeout: timeoutMs });
 
-    // 5. Race observable validation outcome selectors
+    // 5. Wait for observable validation outcome indicator
     const acceptedLocator = page.locator('[data-testid="status-accepted"]');
     const fieldErrorLocator = page.locator('[data-testid="field-error"]');
     const unrelatedErrorLocator = page.locator('[data-testid="unrelated-error"]');
+    const outcomeLocator = page.locator(
+      '[data-testid="status-accepted"], [data-testid="field-error"], [data-testid="unrelated-error"]'
+    );
 
-    const result = await Promise.race([
-      acceptedLocator
-        .waitFor({ state: 'visible', timeout: timeoutMs })
-        .then(() => 'ACCEPTED' as const),
-      fieldErrorLocator
-        .waitFor({ state: 'visible', timeout: timeoutMs })
-        .then(() => 'FIELD_ERROR' as const),
-      unrelatedErrorLocator
-        .waitFor({ state: 'visible', timeout: timeoutMs })
-        .then(() => 'UNRELATED_ERROR' as const),
-    ]).catch(() => 'TIMEOUT' as const);
+    try {
+      await outcomeLocator.first().waitFor({ state: 'visible', timeout: timeoutMs });
+    } catch {
+      // Timeout or interaction interrupted before outcome indicator rendered
+    }
 
-    if (result === 'ACCEPTED' || result === 'FIELD_ERROR') {
-      const isAcceptedVisible = await acceptedLocator.isVisible().catch(() => false);
-      const isErrorVisible = await fieldErrorLocator.isVisible().catch(() => false);
+    const isAcceptedVisible = await acceptedLocator.isVisible().catch(() => false);
+    const isErrorVisible = await fieldErrorLocator.isVisible().catch(() => false);
+    const isUnrelatedVisible = await unrelatedErrorLocator.isVisible().catch(() => false);
 
-      if (isAcceptedVisible && isErrorVisible) {
-        observedOutcome = 'INDETERMINATE';
-        feedbackText = 'Conflicting indicators: both accepted and field error visible in DOM';
-        diagnosticDetails = 'Form exhibited contradictory visual state: both acceptance and rejection indicators are concurrently visible';
-      } else if (result === 'ACCEPTED') {
-        observedOutcome = 'ACCEPTED';
-        feedbackText = (await acceptedLocator.textContent())?.trim() ?? 'Application accepted';
-      } else {
-        observedOutcome = 'REJECTED';
-        feedbackText = (await fieldErrorLocator.textContent())?.trim() ?? 'Form rejected';
-      }
-    } else if (result === 'UNRELATED_ERROR') {
+    if (isAcceptedVisible && isErrorVisible) {
+      observedOutcome = 'INDETERMINATE';
+      feedbackText = 'Conflicting indicators: both accepted and field error visible in DOM';
+      diagnosticDetails = 'Form exhibited contradictory visual state: both acceptance and rejection indicators are concurrently visible';
+    } else if (isAcceptedVisible) {
+      observedOutcome = 'ACCEPTED';
+      feedbackText = (await acceptedLocator.textContent())?.trim() ?? 'Application accepted';
+    } else if (isErrorVisible) {
+      observedOutcome = 'REJECTED';
+      feedbackText = (await fieldErrorLocator.textContent())?.trim() ?? 'Form rejected';
+    } else if (isUnrelatedVisible) {
       observedOutcome = 'INDETERMINATE';
       feedbackText = (await unrelatedErrorLocator.textContent())?.trim() ?? 'Unrelated validation error';
       diagnosticDetails = 'Form validation failed due to unrelated required field or validation error';
