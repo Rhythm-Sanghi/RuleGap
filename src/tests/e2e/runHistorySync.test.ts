@@ -136,9 +136,15 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
 
       // 4. Switch to Mode B, reapprove, and run verification
       await page.locator('#fixture-mode-select').selectOption('corrected');
-      await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
+      await page.waitForSelector('.badge:has-text("Approval Required")');
+      const approveBtnB = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+      await approveBtnB.scrollIntoViewIfNeeded();
+      await approveBtnB.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
-      await page.locator('button:has-text("Start Browser Verification Run")').click();
+      const startBtnB = page.locator('button:has-text("Start Browser Verification Run")');
+      await startBtnB.scrollIntoViewIfNeeded();
+      await startBtnB.click();
+      await page.waitForSelector('button:has-text("Verification Running...")');
 
       // Wait for Mode B completion
       await page.waitForSelector('.callout-success', { timeout: 75000 });

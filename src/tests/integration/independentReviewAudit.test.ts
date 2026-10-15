@@ -8,6 +8,7 @@ import { createServer } from '../../server/server.js';
 import { planStore } from '../../server/storage/planStore.js';
 import { runStore } from '../../server/storage/runStore.js';
 import { executionRunner } from '../../server/runner/executionRunner.js';
+import { browserPool } from '../../server/runner/browserPool.js';
 import { computeSummaryCounts } from '../../shared/ruleEngine.js';
 import { TestObservation, RuleContract } from '../../shared/contract.js';
 
@@ -31,6 +32,7 @@ describe('Independent Review Audit & Hardening Suite', () => {
   });
 
   afterAll(async () => {
+    await browserPool.close();
     await new Promise<void>((resolve) => {
       server.close(() => resolve());
     });

@@ -214,6 +214,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
 
       // Run Mode B to populate history
       await page.locator('#fixture-mode-select').selectOption('corrected');
+      await page.waitForSelector('.badge:has-text("Approval Required")');
       const approveBtn2 = page.locator('button:has-text("Approve Plan & Authorize Verification")');
       await approveBtn2.scrollIntoViewIfNeeded();
       await approveBtn2.click();
@@ -222,6 +223,7 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       const startBtn2 = page.locator('button:has-text("Start Browser Verification Run")');
       await startBtn2.scrollIntoViewIfNeeded();
       await startBtn2.click();
+      await page.waitForSelector('button:has-text("Verification Running...")');
       await page.waitForSelector('.callout-success', { timeout: 75000 });
 
       // Element 9: History selector (now visible with multiple runs)

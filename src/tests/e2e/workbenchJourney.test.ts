@@ -80,7 +80,9 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
 
     // 5. Click "Start Browser Verification Run" (Mode A default)
     const startRunBtn = page.getByRole('button', { name: 'Start Browser Verification Run' });
+    await startRunBtn.scrollIntoViewIfNeeded();
     await startRunBtn.click();
+    await page.waitForSelector('button:has-text("Verification Running...")');
 
     // Wait for Mode A verification to complete (all 7 observations finished)
     await page.waitForSelector('.callout-danger', {
@@ -120,7 +122,9 @@ describe('Slice 4 E2E: Interactive Workbench End-to-End User Journey', () => {
     expect(await page.locator('.badge:has-text("Plan Approved")').isVisible()).toBe(true);
 
     const startRunBtn2 = page.getByRole('button', { name: 'Start Browser Verification Run' });
+    await startRunBtn2.scrollIntoViewIfNeeded();
     await startRunBtn2.click();
+    await page.waitForSelector('button:has-text("Verification Running...")');
 
     // Wait for Mode B verification to complete
     await page.waitForSelector('.callout-success', {
