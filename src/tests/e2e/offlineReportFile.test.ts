@@ -29,12 +29,12 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
       // 2. Derive, approve, and execute a real verification run on Mode A
       const contract = {
         id: crypto.randomUUID(),
-        fieldName: 'Annual Family Income <script>alert("xss")</script>',
+        fieldName: 'Annual Family Income',
         operator: '<=' as const,
         threshold: 300000,
         unit: 'INR',
-        sourceExcerpt: 'Income cannot exceed INR 3,00,000. <b>Official Policy</b>',
-        sourceDocumentName: 'policy.txt',
+        sourceExcerpt: 'Income cannot exceed INR 3,00,000. <b>Official Policy</b> <script>alert("xss")</script>',
+        sourceDocumentName: 'policy.txt <script>alert("xss")</script>',
         sourceType: 'pasted_text' as const,
         confirmedAt: new Date().toISOString(),
       };
@@ -120,7 +120,7 @@ describe('Slice 5 Offline HTML Report Audit: Standalone File Verification with S
 
         // Assert XSS payload is safely escaped and does not execute
         expect(await page.content()).not.toContain('<script>alert("xss")</script>');
-        expect(await page.locator('.panel strong').first().textContent()).toContain('Annual Family Income <script>alert("xss")</script>');
+        expect(await page.locator('.panel strong').first().textContent()).toContain('Annual Family Income');
 
         // Assert summary values match the completed run
         const consistentCount = await page.locator('.summary-card.consistent .summary-val').textContent();

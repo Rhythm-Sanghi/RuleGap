@@ -1,7 +1,11 @@
 import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
 import { z } from 'zod';
-import { RuleContractSchema } from '../../shared/contract.js';
+import {
+  RuleContractSchema,
+  isScholarshipFieldCompatible,
+  isScholarshipUnitCompatible,
+} from '../../shared/contract.js';
 import { planStore } from '../storage/planStore.js';
 import { runStore } from '../storage/runStore.js';
 import { evidenceStore } from '../storage/evidenceStore.js';
@@ -73,6 +77,17 @@ runsRouter.post('/api/runs', async (req: Request, res: Response) => {
 
     // Always derive the executed contract strictly from the approved server plan
     const executedContract = plan.contract;
+
+    if (!isScholarshipFieldCompatible(executedContract.fieldName)) {
+      return res.status(400).json({
+        error: `Cannot execute plan: Contract field '${executedContract.fieldName}' is incompatible with fixture '${plan.fixtureId}'.`,
+      });
+    }
+    if (!isScholarshipUnitCompatible(executedContract.unit)) {
+      return res.status(400).json({
+        error: `Cannot execute plan: Contract unit '${executedContract.unit}' is incompatible with fixture '${plan.fixtureId}'.`,
+      });
+    }
 
     // 2. Concurrency lock: at most one active run
     if (executionRunner.isRunActive()) {

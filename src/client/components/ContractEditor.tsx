@@ -1,5 +1,10 @@
 import React from 'react';
-import { NumericOperator, RuleContract } from '../../shared/contract.js';
+import {
+  NumericOperator,
+  RuleContract,
+  isScholarshipFieldCompatible,
+  isScholarshipUnitCompatible,
+} from '../../shared/contract.js';
 import { formatValueWithUnit } from '../../shared/ruleEngine.js';
 
 interface ContractEditorProps {
@@ -110,6 +115,11 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
             placeholder="Annual Family Income"
             disabled={disabled || isConfirmed}
           />
+          {fieldName.trim() && !isScholarshipFieldCompatible(fieldName) && (
+            <div style={{ color: 'var(--status-mismatch)', fontSize: '0.75rem', marginTop: 4 }}>
+              The synthetic fixture evaluates annual family income. Field name must match an income alias (e.g. Annual Family Income, Family Income, Household Income).
+            </div>
+          )}
         </div>
 
         {/* Structured Comparison Operator, Threshold, Unit */}
@@ -168,6 +178,11 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
               }}
               disabled={disabled || isConfirmed}
             />
+            {unit.trim() && !isScholarshipUnitCompatible(unit) && (
+              <div style={{ color: 'var(--status-mismatch)', fontSize: '0.72rem', marginTop: 4 }}>
+                Must be INR (₹).
+              </div>
+            )}
           </div>
         </div>
 
@@ -195,6 +210,8 @@ export const ContractEditor: React.FC<ContractEditorProps> = ({
               disabled={
                 disabled ||
                 !fieldName.trim() ||
+                !isScholarshipFieldCompatible(fieldName) ||
+                !isScholarshipUnitCompatible(unit) ||
                 threshold === '' ||
                 isNaN(Number(threshold)) ||
                 !Number.isInteger(Number(threshold)) ||

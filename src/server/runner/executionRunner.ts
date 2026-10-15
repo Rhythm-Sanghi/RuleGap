@@ -14,6 +14,7 @@ import { browserPool } from './browserPool.js';
 import { observeFormSubmission } from './formObserver.js';
 import { cancellationManager } from './cancellationManager.js';
 import { runStore } from '../storage/runStore.js';
+import { evidenceStore } from '../storage/evidenceStore.js';
 import { SERVER_CONFIG } from '../config.js';
 
 export interface SseEvent {
@@ -152,6 +153,10 @@ export class ExecutionRunner {
       summaryCounts: computeSummaryCounts(initialObservations, plan.cases.length),
       sampledMismatchSummary: null,
     };
+
+    // Lock both stores to the current data directory before any writes
+    runStore.bindRunDir(runId);
+    evidenceStore.bindRunDir(runId);
 
     // Save initial active checkpoint
     await runStore.saveActiveCheckpoint(snapshot);

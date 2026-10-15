@@ -7,36 +7,46 @@ import {
 import { computeSummaryCounts } from '../../shared/ruleEngine.js';
 import { SERVER_CONFIG } from '../config.js';
 
-async function atomicWriteFile(targetPath: string, content: string): Promise<void> {
+export async function atomicWriteFile(targetPath: string, content: string): Promise<void> {
   const dir = path.dirname(targetPath);
   const base = path.basename(targetPath);
-  const tempPath = path.join(dir, `.${base}.${process.pid}.${Date.now()}.tmp`);
+  const tempPath = path.join(
+    dir,
+    `.${base}.${process.pid}.${Date.now()}.${Math.random().toString(36).substring(2, 8)}.tmp`
+  );
 
+  // Write content to temporary file first
   await fs.promises.writeFile(tempPath, content, 'utf-8');
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  // Retry rename bounded times for transient Windows sharing violations (EPERM, EBUSY)
+  const maxAttempts = 10;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       await fs.promises.rename(tempPath, targetPath);
       return;
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
-      if ((code === 'EPERM' || code === 'EBUSY') && attempt < 4) {
-        await new Promise((r) => setTimeout(r, 20 * (attempt + 1)));
+      const isTransient = code === 'EPERM' || code === 'EBUSY';
+      if (isTransient && attempt < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, 15 * (attempt + 1)));
         continue;
       }
+      // On retry exhaustion or non-transient error:
+      // Clean up temp file safely and rethrow error explicitly.
+      // targetPath was never touched with an unsafe in-place copy.
       try {
-        await fs.promises.copyFile(tempPath, targetPath);
-        await fs.promises.unlink(tempPath).catch(() => {});
-        return;
+        await fs.promises.unlink(tempPath);
       } catch {
-        throw err;
+        // ignore unlink error if file already gone
       }
+      throw err;
     }
   }
 }
 
 export class RunStore {
   private customBaseDir?: string;
+  private boundRunDirs: Map<string, string> = new Map();
 
   constructor(baseDir?: string) {
     this.customBaseDir = baseDir;
@@ -49,11 +59,26 @@ export class RunStore {
   }
 
   /**
+   * Locks the directory for a specific runId so that environment changes
+   * mid-run cannot redirect checkpoints or finalization across split directories.
+   */
+  bindRunDir(runId: string, dir?: string): string {
+    const resolved = dir || this.baseDir;
+    this.boundRunDirs.set(runId, resolved);
+    return resolved;
+  }
+
+  getDirForRun(runId: string): string {
+    return this.boundRunDirs.get(runId) || this.baseDir;
+  }
+
+  /**
    * Writes an atomic progress checkpoint for an active run.
    */
   async saveActiveCheckpoint(snapshot: VerificationRunSnapshot): Promise<void> {
+    const dir = this.boundRunDirs.get(snapshot.runId) || this.bindRunDir(snapshot.runId);
     const filename = `.active-${snapshot.runId}.json`;
-    const finalPath = path.join(this.baseDir, filename);
+    const finalPath = path.join(dir, filename);
     await atomicWriteFile(finalPath, JSON.stringify(snapshot, null, 2));
   }
 
@@ -64,12 +89,13 @@ export class RunStore {
     // Validate schema
     VerificationRunSnapshotSchema.parse(snapshot);
 
+    const dir = this.boundRunDirs.get(snapshot.runId) || this.bindRunDir(snapshot.runId);
     const filename = `${snapshot.runId}.json`;
-    const finalPath = path.join(this.baseDir, filename);
+    const finalPath = path.join(dir, filename);
     await atomicWriteFile(finalPath, JSON.stringify(snapshot, null, 2));
 
     // Clean up active checkpoint if present
-    const activePath = path.join(this.baseDir, `.active-${snapshot.runId}.json`);
+    const activePath = path.join(dir, `.active-${snapshot.runId}.json`);
     try {
       await fs.promises.unlink(activePath);
     } catch {
@@ -85,20 +111,28 @@ export class RunStore {
       return null;
     }
 
-    const finalizedPath = path.join(this.baseDir, `${runId}.json`);
-    try {
-      const data = await fs.promises.readFile(finalizedPath, 'utf-8');
-      return VerificationRunSnapshotSchema.parse(JSON.parse(data));
-    } catch {
-      // Check active checkpoint
-      const activePath = path.join(this.baseDir, `.active-${runId}.json`);
+    const searchDirs = new Set<string>();
+    const bound = this.boundRunDirs.get(runId);
+    if (bound) searchDirs.add(bound);
+    searchDirs.add(this.baseDir);
+
+    for (const dir of searchDirs) {
+      const finalizedPath = path.join(dir, `${runId}.json`);
       try {
-        const data = await fs.promises.readFile(activePath, 'utf-8');
+        const data = await fs.promises.readFile(finalizedPath, 'utf-8');
         return VerificationRunSnapshotSchema.parse(JSON.parse(data));
       } catch {
-        return null;
+        // Check active checkpoint
+        const activePath = path.join(dir, `.active-${runId}.json`);
+        try {
+          const data = await fs.promises.readFile(activePath, 'utf-8');
+          return VerificationRunSnapshotSchema.parse(JSON.parse(data));
+        } catch {
+          // continue checking next directory
+        }
       }
     }
+    return null;
   }
 
   /**

@@ -558,5 +558,132 @@ describe('Independent Review Audit & Hardening Suite', () => {
       const data = await res.json();
       expect(data.error).toContain('negative');
     });
+
+    it('rejects test plan creation with unrelated field names (e.g., Student Age, GPA, Credit Score)', async () => {
+      const unrelatedFields = ['Student Age', 'GPA', 'Credit Score', 'Attendance Percentage', 'Grade Point Average'];
+
+      for (const fieldName of unrelatedFields) {
+        const invalidContract: RuleContract = {
+          ...baseContract,
+          id: crypto.randomUUID(),
+          fieldName,
+        };
+
+        const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RuleGap-Client': 'true',
+          },
+          body: JSON.stringify({
+            contract: invalidContract,
+            fixtureId: 'scholarship',
+            fixtureMode: 'inconsistent',
+            targetFieldSelector: '#annual-income',
+          }),
+        });
+
+        expect(res.status).toBe(400);
+        const data = await res.json();
+        expect(data.error).toContain('Incompatible field');
+      }
+    });
+
+    it('accepts deliberate, unambiguous income aliases for scholarship fixture', async () => {
+      const validAliases = [
+        'Annual Family Income',
+        'family income',
+        'annual income',
+        'Household Income',
+        'annual household income',
+        'income',
+        'Annual Family Income (INR)',
+      ];
+
+      for (const fieldName of validAliases) {
+        const validContract: RuleContract = {
+          ...baseContract,
+          id: crypto.randomUUID(),
+          fieldName,
+        };
+
+        const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RuleGap-Client': 'true',
+          },
+          body: JSON.stringify({
+            contract: validContract,
+            fixtureId: 'scholarship',
+            fixtureMode: 'inconsistent',
+            targetFieldSelector: '#annual-income',
+          }),
+        });
+
+        expect(res.status).toBe(201);
+        const data = await res.json();
+        expect(data.planId).toBeDefined();
+      }
+    });
+
+    it('rejects approval of a plan if contract field name is unrelated to scholarship fixture', async () => {
+      // Create a plan record directly in planStore simulating a tampered or bypassed plan
+      const tamperedContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        fieldName: 'Student Age',
+      };
+      const rawPlan = await planStore.createPlan({
+        contract: tamperedContract,
+        fixtureId: 'scholarship',
+        fixtureMode: 'inconsistent',
+        targetFieldSelector: '#annual-income',
+      });
+
+      // Attempt to approve via API
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/plans/${rawPlan.planId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('incompatible');
+    });
+
+    it('rejects execution start-run if approved plan has an incompatible field', async () => {
+      // Force an approved plan with incompatible field in planStore
+      const tamperedContract: RuleContract = {
+        ...baseContract,
+        id: crypto.randomUUID(),
+        fieldName: 'GPA',
+      };
+      const rawPlan = await planStore.createPlan({
+        contract: tamperedContract,
+        fixtureId: 'scholarship',
+        fixtureMode: 'inconsistent',
+        targetFieldSelector: '#annual-income',
+      });
+      // Force approval state directly in store
+      rawPlan.isApproved = true;
+      rawPlan.approvedAt = new Date().toISOString();
+
+      const res = await fetch(`http://127.0.0.1:${serverPort}/api/runs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RuleGap-Client': 'true',
+        },
+        body: JSON.stringify({ planId: rawPlan.planId }),
+      });
+
+      expect(res.status).toBe(400);
+      const data = await res.json();
+      expect(data.error).toContain('incompatible');
+    });
   });
 });

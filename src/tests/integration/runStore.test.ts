@@ -2,7 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { RunStore } from '../../server/storage/runStore.js';
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { RunStore, atomicWriteFile } from '../../server/storage/runStore.js';
 import { VerificationRunSnapshot } from '../../shared/contract.js';
 
 describe('Slice 3 Integration: RunStore Atomic Checkpointing & Crash Recovery', () => {
@@ -183,5 +184,121 @@ describe('Slice 3 Integration: RunStore Atomic Checkpointing & Crash Recovery', 
     expect(retrieved?.observations[2].lifecycleState).toBe('NOT_EXECUTED');
     expect(retrieved?.summaryCounts.notExecuted).toBe(1);
     expect(retrieved?.summaryCounts.interrupted).toBe(1);
+  });
+
+  describe('Fault injection & atomic guarantees', () => {
+    it('recovers from transient EPERM/EBUSY rename collisions via bounded retries', async () => {
+      const targetFile = path.join(testDir, 'transient-test.json');
+      const originalRename = fs.promises.rename;
+      let failCount = 0;
+
+      // Fail twice with EPERM, then succeed
+      vi.spyOn(fs.promises, 'rename').mockImplementation(async (oldPath, newPath) => {
+        if (failCount < 2) {
+          failCount++;
+          const err = new Error('EPERM: operation not permitted');
+          (err as { code?: string }).code = 'EPERM';
+          throw err;
+        }
+        return originalRename(oldPath, newPath);
+      });
+
+      try {
+        await atomicWriteFile(targetFile, JSON.stringify({ verified: true }));
+        expect(failCount).toBe(2);
+        expect(fs.existsSync(targetFile)).toBe(true);
+        const data = JSON.parse(await fs.promises.readFile(targetFile, 'utf-8'));
+        expect(data.verified).toBe(true);
+
+        // Verify no leftover .tmp files
+        const dirFiles = await fs.promises.readdir(testDir);
+        expect(dirFiles.some((f) => f.endsWith('.tmp'))).toBe(false);
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('safely handles permanent rename failure by deleting temp file and preserving existing target file intact', async () => {
+      const targetFile = path.join(testDir, 'existing-record.json');
+      const originalContent = JSON.stringify({ original: 'untouched-evidence' });
+      await fs.promises.writeFile(targetFile, originalContent, 'utf-8');
+
+      // Mock rename to permanently fail
+      vi.spyOn(fs.promises, 'rename').mockImplementation(async () => {
+        const err = new Error('EPERM: persistent lock violation');
+        (err as { code?: string }).code = 'EPERM';
+        throw err;
+      });
+
+      try {
+        await expect(
+          atomicWriteFile(targetFile, JSON.stringify({ corrupted: 'bad-data' }))
+        ).rejects.toThrow('EPERM');
+
+        // Existing target file must remain 100% untouched and uncorrupted
+        const currentContent = await fs.promises.readFile(targetFile, 'utf-8');
+        expect(currentContent).toBe(originalContent);
+
+        // Temp file must be safely unlinked/deleted
+        const dirFiles = await fs.promises.readdir(testDir);
+        expect(dirFiles.some((f) => f.endsWith('.tmp'))).toBe(false);
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('preserves existing valid finalized run records if subsequent write fails', async () => {
+      const runId = crypto.randomUUID();
+      const validSnapshot = createMockSnapshot(runId, 'COMPLETED_CONSISTENT');
+      await store.saveFinalizedRun(validSnapshot);
+
+      const originalRecord = await store.getRun(runId);
+      expect(originalRecord).not.toBeNull();
+      expect(originalRecord?.status).toBe('COMPLETED_CONSISTENT');
+
+      // Fault injection: simulate disk/lock failure during next write
+      vi.spyOn(fs.promises, 'rename').mockImplementation(async () => {
+        const err = new Error('EBUSY: resource busy or locked');
+        (err as { code?: string }).code = 'EBUSY';
+        throw err;
+      });
+
+      const badSnapshot = createMockSnapshot(runId, 'FAILED');
+      try {
+        await expect(store.saveFinalizedRun(badSnapshot)).rejects.toThrow('EBUSY');
+
+        // Authoritative record must still be intact and uncorrupted
+        const preservedRecord = await store.getRun(runId);
+        expect(preservedRecord?.status).toBe('COMPLETED_CONSISTENT');
+      } finally {
+        vi.restoreAllMocks();
+      }
+    });
+
+    it('locks directory per runId so environmental changes mid-run cannot split run files', async () => {
+      const runId = crypto.randomUUID();
+      const initialSnapshot = createMockSnapshot(runId, 'RUNNING');
+
+      // Explicitly bind to dirA
+      const dirA = path.join(testDir, 'dirA');
+      fs.mkdirSync(dirA, { recursive: true });
+      store.bindRunDir(runId, dirA);
+
+      await store.saveActiveCheckpoint(initialSnapshot);
+      expect(fs.existsSync(path.join(dirA, `.active-${runId}.json`))).toBe(true);
+
+      // Finalize the run
+      initialSnapshot.status = 'COMPLETED_CONSISTENT';
+      initialSnapshot.completedAt = new Date().toISOString();
+      await store.saveFinalizedRun(initialSnapshot);
+
+      // Finalized file and checkpoint cleanup must happen strictly in dirA
+      expect(fs.existsSync(path.join(dirA, `${runId}.json`))).toBe(true);
+      expect(fs.existsSync(path.join(dirA, `.active-${runId}.json`))).toBe(false);
+
+      // Retrieval finds it via bound run dir
+      const retrieved = await store.getRun(runId);
+      expect(retrieved?.status).toBe('COMPLETED_CONSISTENT');
+    });
   });
 });
