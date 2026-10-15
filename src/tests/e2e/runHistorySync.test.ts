@@ -140,7 +140,9 @@ describe('Run History and Displayed Results Synchronization Regression Test', ()
       expect(historyOptionsA[0]).toContain('4 Mismatches');
 
       // 4. Switch to Mode B, reapprove, and run verification
-      await page.locator('#fixture-mode-select').selectOption('corrected');
+      const modeSelectB = page.locator('#fixture-mode-select');
+      await modeSelectB.scrollIntoViewIfNeeded();
+      await modeSelectB.selectOption('corrected');
       await page.waitForSelector('.panel[data-fixture-mode="corrected"]');
       await page.waitForSelector('.badge:has-text("Approval Required")');
       const approveBtnB = page.locator('button:has-text("Approve Plan & Authorize Verification")');

@@ -189,9 +189,18 @@ runsRouter.get('/api/runs/:id/events', async (req: Request, res: Response) => {
     } else {
       res.write(`id: 1\nevent: run_completed\ndata: ${JSON.stringify(run)}\n\n`);
     }
-    res.end();
+    setTimeout(() => {
+      try {
+        res.end();
+      } catch {
+        // ignore closed connection
+      }
+    }, 1500);
     return;
   }
+
+  // Send initial event to ensure client socket transitions to open state
+  res.write(`event: connected\ndata: {"status":"connected"}\n\n`);
 
   const lastEventIdHeader = req.headers['last-event-id'];
   const lastEventId = typeof lastEventIdHeader === 'string' ? Number(lastEventIdHeader) : undefined;

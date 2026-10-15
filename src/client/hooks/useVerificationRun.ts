@@ -222,23 +222,21 @@ export function useVerificationRun() {
             .then((r) => (r.ok ? r.json() : null))
             .then((data: VerificationRunSnapshot | null) => {
               if (!isStreamActive) return;
-              if (data) {
+              if (data && data.status !== 'RUNNING' && data.status !== 'QUEUED') {
+                stopPolling();
                 setActiveRunSnapshot(data);
                 setSelectedRunSnapshot(data);
-                if (data.status !== 'RUNNING' && data.status !== 'QUEUED') {
-                  stopPolling();
-                  setHistoricalRuns((prev) => {
-                    const filtered = prev.filter((r) => r.runId !== data.runId);
-                    return [data, ...filtered];
-                  });
-                  setIsRunning(false);
-                  setIsCancelling(false);
-                  sse.close();
-                  fetchRunHistory();
-                  return;
-                }
+                setHistoricalRuns((prev) => {
+                  const filtered = prev.filter((r) => r.runId !== data.runId);
+                  return [data, ...filtered];
+                });
+                setIsRunning(false);
+                setIsCancelling(false);
+                sse.close();
+                fetchRunHistory();
+                return;
               }
-              pollTimer = setTimeout(pollStatus, 1200);
+              pollTimer = setTimeout(pollStatus, 1500);
             })
             .catch(() => {
               if (isStreamActive) {
@@ -247,9 +245,12 @@ export function useVerificationRun() {
             });
         };
 
+        // Safety polling timer starts after 3s to guarantee terminal synchronization even if SSE drops
+        pollTimer = setTimeout(pollStatus, 3000);
+
         sse.onerror = () => {
-          // Polling fallback if SSE connection is dropped or interrupted
-          if (!pollTimer && isStreamActive) {
+          // Immediate polling fallback if SSE connection encounters an error
+          if (isStreamActive) {
             pollStatus();
           }
         };

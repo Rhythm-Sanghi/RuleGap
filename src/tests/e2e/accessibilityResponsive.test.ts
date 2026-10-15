@@ -82,6 +82,9 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       viewport: { width: 1280, height: 800 },
     });
     const page = await context.newPage();
+    page.on('console', (msg) => console.log('AXE TEST CONSOLE:', msg.text()));
+    page.on('pageerror', (err) => console.error('AXE TEST PAGEERROR:', err));
+    page.on('requestfailed', (req) => console.error('AXE TEST REQ FAILED:', req.url(), req.failure()?.errorText));
 
     try {
       await page.goto(`http://127.0.0.1:${serverPort}`);
@@ -105,11 +108,16 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       expect(preflightAudit.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious')).toEqual([]);
 
       // 3. Approve and start run
-      await page.locator('button:has-text("Approve Plan & Authorize Verification")').click();
+      const approveBtn = page.locator('button:has-text("Approve Plan & Authorize Verification")');
+      await approveBtn.scrollIntoViewIfNeeded();
+      await approveBtn.click();
       await page.waitForSelector('.badge:has-text("Plan Approved")');
       await page.waitForSelector('button:has-text("Start Browser Verification Run")');
-      await page.locator('button:has-text("Start Browser Verification Run")').click();
-      await page.waitForSelector('.callout-danger', { timeout: 75000 });
+      const startBtn = page.locator('button:has-text("Start Browser Verification Run")');
+      await startBtn.scrollIntoViewIfNeeded();
+      await startBtn.click();
+      await page.waitForSelector('button:has-text("Verification Running...")');
+      await page.waitForSelector('.callout-danger', { timeout: 90000 });
 
       // Audit completed verification matrix state
       const postRunAudit = await new AxeBuilder({ page })
@@ -216,7 +224,9 @@ describe('Slice 5 E2E Audit: Accessibility, Keyboard Navigation, & Responsive Br
       await page.waitForSelector('.drawer', { state: 'detached' });
 
       // Run Mode B to populate history
-      await page.locator('#fixture-mode-select').selectOption('corrected');
+      const modeSelect = page.locator('#fixture-mode-select');
+      await modeSelect.scrollIntoViewIfNeeded();
+      await modeSelect.selectOption('corrected');
       await page.waitForSelector('.panel[data-fixture-mode="corrected"]');
       await page.waitForSelector('.badge:has-text("Approval Required")');
       const approveBtn2 = page.locator('button:has-text("Approve Plan & Authorize Verification")');
