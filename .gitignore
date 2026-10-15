@@ -4,6 +4,9 @@ node_modules/
 # Devpost learn personal context
 /devpost/learner-profile.md
 
+# Agent scaffolding
+.agents/
+
 # Local credential files (allow .env.example)
 .env
 .env.*

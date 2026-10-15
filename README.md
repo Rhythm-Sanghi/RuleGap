@@ -16,18 +16,19 @@ When institutions update grant limits, scholarship income thresholds, or regulat
 
 ## How It Works
 
-RuleGap provides a unified, local-first verification workbench operating in five steps:
+RuleGap provides a local-first verification workbench operating in five steps:
 
-1. **Policy Ingestion**: Paste policy text or extract text from a local PDF document (with client-side extraction and graceful manual fallback).
+1. **Policy Ingestion**: Paste policy text or extract text from a local PDF document with client-side text extraction and manual fallback.
 2. **Rule Contract Confirmation**: Formally confirm the field name, comparison operator (`<=`, `<`, `>=`, `>`), threshold value, unit, and source excerpt.
-3. **Pre-Flight Test Plan Review**: The system deterministically derives boundary test values ($T-1$, $T$, $T+1$) and demonstration probes. An authoritative server-side plan approval gate requires explicit user sign-off before any browser execution can begin.
-4. **Independent Black-Box Browser Verification**: A hermetic Playwright Chromium runner navigates to the authorized local target form, inputs values, submits, and inspects observable DOM feedback without reading internal form source code or hardcoded thresholds.
+3. **Pre-Flight Test Plan Review**: Deterministically derives boundary test values ($T-1$, $T$, $T+1$) and interior probes. An authoritative server-side plan approval gate requires explicit sign-off before browser execution begins.
+4. **Independent Black-Box Browser Verification**: A route-restricted Playwright Chromium runner navigates to the authorized target form, inputs values, submits, and inspects observable DOM feedback without reading form source code or hardcoded thresholds.
 5. **Evidence Matrix & Offline Export**: Results are classified into four mutually exclusive categories:
    - **Consistent**: Observable form behavior matches policy expectation.
    - **Confirmed Mismatch**: Form rejected an applicant the policy permits, or accepted one the policy forbids.
-   - **Inconclusive**: Form rejected due to an unrelated required field, ambiguous feedback, or conflicting indicators.
+   - **Inconclusive**: Form rejected due to an unrelated required field or ambiguous feedback.
    - **Execution Error**: Target field or submit button missing from the DOM.
-   The entire run can be downloaded as a single-file, self-contained offline HTML report with base64-embedded screenshots.
+
+   Completed verification runs can be downloaded as a single-file, self-contained offline HTML report with base64-embedded screenshots.
 
 ---
 
@@ -35,29 +36,19 @@ RuleGap provides a unified, local-first verification workbench operating in five
 
 RuleGap includes an embedded synthetic scholarship application fixture (`/fixtures/scholarship`) supporting two demonstration modes:
 
-- **Mode A (Inconsistent Fixture)**: Form enforces an unupdated ₹250,000 threshold against a documented ₹300,000 policy rule.
-  - Executing the 7 boundary test cases produces: **3 Consistent**, **4 Confirmed Mismatches** (at ₹250,001, ₹275,000, ₹299,999, ₹300,000), **0 Inconclusive**, **0 Execution Errors**.
-- **Mode B (Corrected Fixture)**: Form enforces the updated ₹300,000 threshold.
-  - Executing the 7 boundary test cases produces: **7 Consistent**, **0 Confirmed Mismatches**.
+- **Mode A (Inconsistent Fixture)**: Form enforces an unupdated ₹250,000 threshold against a documented ₹300,000 policy rule. Executing the 7 boundary test cases produces: **3 Consistent**, **4 Confirmed Mismatches** (at ₹250,001, ₹275,000, ₹299,999, and ₹300,000).
+- **Mode B (Corrected Fixture)**: Form enforces the updated ₹300,000 threshold. Executing the 7 boundary test cases produces: **7 Consistent**, **0 Confirmed Mismatches**.
 
-Historical verification runs are preserved immutably, allowing stakeholders to compare pre- and post-correction evidence side by side.
-
----
-
-## Scope & Target Limitations
-
-- **Synthetic Local Fixture Only**: RuleGap is designed and validated strictly against its authorized local synthetic scholarship fixture (`http://127.0.0.1:3000/fixtures/scholarship`). It does not navigate to external URLs, third-party websites, or arbitrary web forms.
-- **Finite Boundary Sampling**: RuleGap evaluates software consistency strictly at computed mathematical boundaries and selected demonstration probe values. Sampled consistency demonstrates that the tested boundaries conform to policy, but finite sampling does not prove universal correctness across untested values.
-- **Single-Variable Numerical Contracts**: The current implementation models single-variable relational operators (`<`, `<=`, `>`, `>=`) with integer thresholds. Compound rules and multi-field dependencies are not supported.
+Historical verification runs are preserved immutably, allowing pre- and post-correction evidence to be compared side by side.
 
 ---
 
 ## Architectural Principles & Security Boundary
 
-- **No External Cloud Services & No Paid APIs**: Runs entirely on the local machine using local Node.js software packages; requires no external LLM API keys, cloud hosting, or paid subscriptions.
-- **Hermetic Security Perimeter**: All browser contexts block external network routes, unrequested popups, and service workers, restricting execution strictly to `127.0.0.1`. Target fixture URLs are derived from the trusted server socket, preventing Host header redirection attacks.
-- **Anti-CSRF & Host Header Validation**: All state-changing API endpoints require the custom `X-RuleGap-Client: true` header and validate the `Host` header against loopback addresses.
-- **Crash Recovery**: Active verification runs maintain atomic filesystem checkpoints (`.active-[runId].json`), safely reconciling interrupted runs to `FAILED` (with in-flight observations tagged as `INTERRUPTED`) upon process restart.
+- **Local Execution**: Runs entirely on your local machine using standard Node.js packages; requires no external cloud services, LLM API keys, or paid subscriptions.
+- **Hermetic Network Isolation**: Playwright browser contexts block external network routes, unrequested popups, and service workers, restricting execution strictly to `127.0.0.1`.
+- **Anti-CSRF & Host Header Validation**: All state-modifying endpoints require the custom `X-RuleGap-Client: true` header and validate the `Host` header against loopback addresses.
+- **Crash Recovery**: Active verification runs maintain atomic filesystem checkpoints (`.active-[runId].json`), reconciling interrupted runs upon process restart.
 
 ---
 
@@ -77,7 +68,7 @@ Historical verification runs are preserved immutably, allowing stakeholders to c
    npm install
    ```
 
-2. **Install Playwright Chromium browser**:
+2. **Install Playwright Chromium**:
    ```bash
    npx playwright install chromium
    ```
@@ -86,7 +77,7 @@ Historical verification runs are preserved immutably, allowing stakeholders to c
    ```bash
    npm run dev
    ```
-   Open your browser to `http://127.0.0.1:3000`.
+   Open `http://127.0.0.1:3000` in your browser.
 
 ### Production Build & Run
 
@@ -101,29 +92,15 @@ npm start
 ### Type Checking & Test Execution
 
 ```bash
-# Run strict TypeScript checks (client and server)
+# Strict TypeScript checks (client and server)
 npm run typecheck
 
-# Run full unit and integration test suite
+# Full test suite (unit and integration)
 npm test
 
-# Run Playwright E2E verification test suite
+# Playwright browser E2E test suite
 npm run test:e2e
 ```
-
----
-
-## Manual 200% Browser Zoom Verification Checklist
-
-Automated tests verify layout reflow at a zoom-equivalent 640px CSS layout viewport. To verify actual native browser zoom in Google Chrome or Microsoft Edge:
-
-1. Open `http://127.0.0.1:3000` in Chrome or Edge.
-2. Press `Ctrl + +` (Windows) or `Cmd + +` (macOS) repeatedly until the browser zoom indicator reads **200%**.
-3. **Check Panels**: Verify the Rule Ingestion panel and Verification Execution panel stack cleanly into a single vertical column.
-4. **Check Header**: Verify the brand title, status badge, and navigation elements wrap without overlapping.
-5. **Check Pre-Flight Table**: Ensure the 7 boundary cases display cleanly; the table scrolls horizontally inside its container (`.data-table-container`) without causing page-level horizontal overflow.
-6. **Check Evidence Drawer**: Click **Inspect** on a case; verify the slide-over drawer opens, focus is trapped on the close button, and all diagnostic text and screenshots are legible.
-7. **Check History & Export**: Verify the Run History dropdown and Export HTML Report buttons remain clickable and reachable.
 
 ---
 
@@ -137,15 +114,21 @@ Automated tests verify layout reflow at a zoom-equivalent 640px CSS layout viewp
 
 ---
 
-## Planning & Hackathon Artifacts
+## Scope & Limitations
 
-The core planning, product definition, and architectural blueprints created for the Devpost *Build With AI: Basics 2026* hackathon are preserved in the [`devpost/`](devpost/) directory:
+- **Synthetic Local Fixture Only**: RuleGap is designed and validated strictly against its local synthetic scholarship fixture (`http://127.0.0.1:3000/fixtures/scholarship`). It does not navigate to external URLs or arbitrary third-party web forms.
+- **Finite Boundary Sampling**: RuleGap evaluates software consistency at computed mathematical boundaries and selected demonstration probe values. Sampled consistency demonstrates conformity at tested points, but finite sampling does not prove universal correctness across untested values.
+- **Single-Variable Relational Contracts**: The current rule engine models single-variable relational operators (`<`, `<=`, `>`, `>=`) with integer thresholds. Compound Boolean expressions and multi-field dependencies are out of scope for this proof of concept.
+
+---
+
+## Planning & Specification Documents
+
+The core planning documents created during the Devpost *Build With AI: Basics* hackathon are available in the [`devpost/`](devpost/) directory:
 
 - [Scope Document](devpost/scope.md) — Problem statement, boundary definition, and proof-of-concept cut line.
-- [Product Requirements Document (PRD)](devpost/prd.md) — User journey, feature specifications, states, and non-happy-path behaviors.
-- [Technical Specification](devpost/spec.md) — Technical architecture, schema definitions, and security invariants.
-- [Build Checklist](devpost/checklist.md) — Verification records across the five delivery slices.
-- [Interactive Application Map](devpost/app-map.html) — Visual SVG architecture diagram and code tour stops.
+- [Product Requirements Document (PRD)](devpost/prd.md) — User journey, feature specifications, states, and edge-case behaviors.
+- [Technical Specification](devpost/spec.md) — Architecture, schema definitions, and security invariants.
 
 ---
 

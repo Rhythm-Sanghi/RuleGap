@@ -382,30 +382,32 @@ When the user clicks **Cancel Verification**:
 
 ```
 RuleGap/
-├── .agents/
-│   └── skills/              # Devpost Learn official skill pack
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # GitHub Actions multi-platform CI (Node 20 & 24)
 ├── devpost/
-│   ├── learner-profile.md   # Learner onboarding profile (gitignored)
-│   ├── scope.md             # Approved scope
-│   ├── prd.md               # Approved product requirements
-│   └── spec.md              # Approved technical specification
+│   ├── screenshots/             # Genuine application execution screenshots
+│   ├── scope.md                 # Approved scope
+│   ├── prd.md                   # Approved product requirements
+│   └── spec.md                  # Approved technical specification
 ├── src/
-│   ├── shared/              # Shared between client and server
-│   │   ├── contract.ts      # Shared Zod schemas and TypeScript types
-│   │   ├── ruleEngine.ts    # Pure deterministic rule evaluator & boundary generator
-│   │   └── sampleData.ts    # Synthetic scholarship policy text and metadata
-│   ├── server/              # Node.js backend (Express)
-│   │   ├── server.ts        # Express app entry point (serves API, client, & fixtures)
-│   │   ├── config.ts        # Port (3000), host (127.0.0.1), timeouts, paths
+│   ├── shared/                  # Shared between client and server
+│   │   ├── contract.ts          # Shared Zod schemas and TypeScript types
+│   │   ├── ruleEngine.ts        # Pure deterministic rule evaluator & boundary generator
+│   │   └── sampleData.ts        # Synthetic scholarship policy text and metadata
+│   ├── server/                  # Node.js backend (Express)
+│   │   ├── server.ts            # Express app entry point (serves API, client, & fixtures)
+│   │   ├── config.ts            # Port (3000), host (127.0.0.1), timeouts, paths
 │   │   ├── middleware/
-│   │   │   └── security.ts  # Host header validation, CSRF header checks
+│   │   │   └── security.ts      # Host header validation, CSRF header checks
 │   │   ├── routes/
-│   │   │   ├── runs.ts      # Run lifecycle, SSE streaming, cancellation
-│   │   │   ├── plans.ts     # Plan creation, validation, and approval gate
-│   │   │   └── fixtures.ts  # Fixture metadata and state
+│   │   │   ├── runs.ts          # Run lifecycle, SSE streaming, cancellation
+│   │   │   ├── plans.ts         # Plan creation, validation, and approval gate
+│   │   │   └── fixtures.ts      # Fixture metadata and state
 │   │   ├── runner/
 │   │   │   ├── browserPool.ts         # Playwright instance lifecycle & context factory
 │   │   │   ├── formObserver.ts        # Black-box DOM interaction & feedback extractor
+│   │   │   ├── executionRunner.ts     # Verification orchestrator
 │   │   │   └── cancellationManager.ts # Safe abort & resource release
 │   │   ├── storage/
 │   │   │   ├── runStore.ts            # Atomic JSON filesystem storage & crash reconciliation
@@ -414,55 +416,60 @@ RuleGap/
 │   │   └── report/
 │   │       ├── reportTemplate.ts      # Offline HTML report template with inline CSS
 │   │       └── reportGenerator.ts     # Sanitizes data, embeds base64 images, generates HTML
-│   ├── client/              # React frontend (Vite)
-│   │   ├── index.html       # Client entry HTML
-│   │   ├── main.tsx         # React root
-│   │   ├── App.tsx          # Hybrid Guided Workbench layout
+│   ├── client/                  # React frontend (Vite)
+│   │   ├── index.html           # Client entry HTML
+│   │   ├── main.tsx             # React root
+│   │   ├── App.tsx              # Hybrid Guided Workbench layout
 │   │   ├── styles/
-│   │   │   ├── tokens.css   # Workshop + Gridline CSS variables
-│   │   │   └── main.css     # High-density workbench layout styles
+│   │   │   ├── tokens.css       # Workshop + Gridline CSS variables
+│   │   │   └── main.css         # High-density workbench layout styles
 │   │   ├── components/
 │   │   │   ├── Header.tsx                 # Top bar with product identity & status
-│   │   │   ├── PolicyIngestion/
-│   │   │   │   ├── TextImporter.tsx       # Paste text & character counter
-│   │   │   │   ├── PdfImporter.tsx        # In-browser PDF.js extractor with fallback
-│   │   │   │   └── ContractEditor.tsx     # Structured rule form & confirm action
-│   │   │   ├── VerificationSetup/
-│   │   │   │   ├── FixtureControl.tsx     # Mode A vs Mode B segmented toolbar
-│   │   │   │   ├── PreFlightTable.tsx     # 7-case review table & approve checkbox
-│   │   │   │   └── ActionButtons.tsx      # Run Verification & Cancel buttons
-│   │   │   ├── ResultsAndEvidence/
-│   │   │   │   ├── RunHistorySelector.tsx # Labeled tabs for historical runs
-│   │   │   │   ├── SummaryBar.tsx         # 4-state count badges & progress
-│   │   │   │   ├── EvidenceMatrix.tsx     # Primary results table
-│   │   │   │   ├── EvidenceDrawer.tsx     # Expandable row diagnostics & screenshot
-│   │   │   │   └── ExportButton.tsx       # Single-file HTML report download
-│   │   │   └── Fixture/
-│   │   │       └── ScholarshipForm.tsx    # Embedded synthetic scholarship form component
+│   │   │   ├── SourceIngestion.tsx        # Paste text & client PDF text extractor
+│   │   │   ├── ContractEditor.tsx         # Structured rule form & confirm action
+│   │   │   ├── FixtureControl.tsx         # Mode A vs Mode B segmented toolbar
+│   │   │   ├── PreFlightPlan.tsx          # 7-case review table & approve button
+│   │   │   ├── SummaryBar.tsx             # 4-state count badges & progress
+│   │   │   ├── EvidenceMatrix.tsx         # Primary results table & export trigger
+│   │   │   ├── EvidenceDrawer.tsx         # Expandable row diagnostics & screenshot
+│   │   │   └── RunHistorySelector.tsx     # Selector for historical runs
 │   │   └── hooks/
+│   │       ├── usePdfExtractor.ts         # PDF text extraction lifecycle
 │   │       ├── useRuleContract.ts         # Contract state & validation
 │   │       ├── usePreFlightPlan.ts        # Plan creation, approval, and boundary generation
 │   │       └── useVerificationRun.ts      # SSE connection, events, and run history
 │   └── tests/
+│       ├── setup.ts             # Vitest test setup
 │       ├── unit/
-│       │   ├── ruleEngine.test.ts         # Boundary values, operators, edge cases
-│       │   ├── reportGenerator.test.ts    # HTML escaping, sanitization, single-file bundle
-│       │   ├── planAuthority.test.ts      # Plan creation, approval gate, tamper rejection
-│       │   └── contractSchemas.test.ts    # Zod validation & type invariants
+│       │   ├── contractSchemas.test.ts    # Zod validation & type invariants
+│       │   ├── pdfExtractor.test.ts       # In-browser & fallback PDF extraction
+│       │   └── ruleEngine.test.ts         # Boundary values, operators, edge cases
 │       ├── integration/
-│       │   ├── securityMiddleware.test.ts # Host header, CSRF, unauthorized URL rejection
+│       │   ├── dataDirIsolation.test.ts   # Storage path isolation
+│       │   ├── independentReviewAudit.test.ts # Deep contract and review invariants
+│       │   ├── realProcessRestart.test.ts # Crash recovery reconciliation
+│       │   ├── reliabilitySecurityAudit.test.ts # Security and rate limit tests
+│       │   ├── reportGenerator.test.ts    # HTML escaping, sanitization, single-file bundle
 │       │   ├── runStore.test.ts           # Atomic persistence, crash recovery reconciliation
+│       │   ├── securityMiddleware.test.ts # Host header, CSRF, unauthorized URL rejection
 │       │   └── sseReconnection.test.ts    # Sequence numbering, Last-Event-ID replay
 │       └── e2e/
-│           ├── verificationFlow.test.ts   # Real browser Playwright test against fixture (both modes)
+│           ├── accessibilityResponsive.test.ts # Axe-core & 200% zoom verification
 │           ├── cancellation.test.ts       # Cancellation during execution & cleanup
-│           └── isolation.test.ts          # Fresh context state isolation verification
+│           ├── offlineReportFile.test.ts  # Offline file:// verification
+│           ├── pdfImportFlow.test.ts      # PDF upload user journey
+│           ├── runHistorySync.test.ts     # Multi-run persistence and state sync
+│           ├── verificationFlow.test.ts   # Black-box Playwright test against fixture
+│           └── workbenchJourney.test.ts   # Full end-to-end user workflow
+├── .gitignore
+├── LICENSE
 ├── package.json
+├── package-lock.json
+├── README.md
 ├── tsconfig.json
 ├── tsconfig.server.json
 ├── vite.config.ts
-├── vitest.config.ts
-└── playwright.config.ts
+└── vitest.config.ts
 ```
 
 ---
