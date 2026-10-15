@@ -733,6 +733,12 @@ describe('Independent Review Audit & Hardening Suite', () => {
       expect(successData.runId).toBeDefined();
       expect(successData.status).toBe('RUNNING');
 
+      // Cancel the run immediately so background browser processes do not contend with other tests
+      await fetch(`http://127.0.0.1:${serverPort}/api/runs/${successData.runId}/cancel`, {
+        method: 'POST',
+        headers: { 'X-RuleGap-Client': 'true' },
+      });
+
       while (executionRunner.isRunActive()) {
         await new Promise((r) => setTimeout(r, 50));
       }

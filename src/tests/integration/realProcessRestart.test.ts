@@ -31,11 +31,12 @@ describe('Slice 5 Reliability: Real Process Crash & Restart Recovery', () => {
 
       let stdout = '';
       let stderr = '';
+      let started = false;
       const onData = (data: Buffer) => {
         const str = data.toString();
         stdout += str;
-        if (stdout.includes(`Running on http://127.0.0.1:${testPort}`)) {
-          proc.stdout?.off('data', onData);
+        if (!started && stdout.includes(`Running on http://127.0.0.1:${testPort}`)) {
+          started = true;
           resolve({ proc, url: `http://127.0.0.1:${testPort}` });
         }
       };

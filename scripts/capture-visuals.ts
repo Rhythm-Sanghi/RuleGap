@@ -54,10 +54,11 @@ async function main() {
       });
 
       let stdout = '';
+      let started = false;
       const onData = (data: Buffer) => {
         stdout += data.toString();
-        if (stdout.includes(`Running on http://127.0.0.1:${serverPort}`)) {
-          proc.stdout?.off('data', onData);
+        if (!started && stdout.includes(`Running on http://127.0.0.1:${serverPort}`)) {
+          started = true;
           resolve(proc);
         }
       };
